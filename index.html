@@ -141,6 +141,14 @@
       margin-bottom: 32px;
     }
 
+    .section-title-meta {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
     .section-title h2,
     .editor-heading h2 {
       margin: 0;
@@ -165,14 +173,9 @@
       touch-action: pan-x;
     }
 
-    #fieldGrid {
-      grid-auto-flow: column;
-      grid-auto-columns: max-content;
-      align-items: start;
-      justify-content: start;
-    }
-
-    #auditGrid {
+    #fieldGrid,
+    .detail-fields-grid,
+    .detail-audit-grid {
       grid-auto-flow: column;
       grid-auto-columns: max-content;
       align-items: start;
@@ -293,6 +296,49 @@
       letter-spacing: 0.231px;
     }
 
+    .detail-controls {
+      display: inline-flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .detail-stepper {
+      min-width: 44px;
+      padding: 11px 0;
+      text-align: center;
+    }
+
+    .detail-stack {
+      display: grid;
+      gap: 32px;
+    }
+
+    .detail-entry {
+      display: grid;
+      gap: 24px;
+      padding: 32px 0 0;
+      border-top: 1px solid var(--line);
+    }
+
+    .detail-entry:first-child {
+      padding-top: 0;
+      border-top: 0;
+    }
+
+    .detail-entry-title {
+      margin: 0;
+      font-family: var(--font-display);
+      font-size: 28px;
+      font-weight: 400;
+      line-height: 1.14;
+      letter-spacing: 0.196px;
+      color: var(--ink);
+    }
+
+    .detail-entry .subpanel {
+      margin-top: 0;
+    }
+
     .actions,
     .editor-actions {
       display: flex;
@@ -411,7 +457,9 @@
       }
 
       #fieldGrid,
-      #auditGrid {
+      #auditGrid,
+      .detail-fields-grid,
+      .detail-audit-grid {
         grid-auto-columns: minmax(96px, max-content);
       }
 
@@ -420,6 +468,11 @@
       .editor-meta {
         align-items: flex-start;
         flex-direction: column;
+      }
+
+      .section-title-meta {
+        align-items: flex-start;
+        justify-content: flex-start;
       }
 
       .section-title h2,
@@ -450,13 +503,21 @@
           <div>
             <h2 id="formTitle">Formulario de pricing_rule</h2>
           </div>
-          <span class="subcopy" id="entityBadge">ENTITY_TYPE_ID 8</span>
+          <div class="section-title-meta">
+            <div class="detail-controls hidden" id="detailControls" aria-label="Controles de pricing_rule_detail">
+              <button class="secondary detail-stepper" type="button" id="removeDetailButton" aria-label="Eliminar pricing_rule_detail">-</button>
+              <button class="primary detail-stepper" type="button" id="addDetailButton" aria-label="Agregar pricing_rule_detail">+</button>
+            </div>
+            <span class="subcopy" id="entityBadge">ENTITY_TYPE_ID 8</span>
+          </div>
         </div>
 
         <form id="generatorForm" novalidate>
           <div class="form-grid" id="fieldGrid"></div>
 
-          <div class="subpanel">
+          <div class="detail-stack hidden" id="detailStack"></div>
+
+          <div class="subpanel" id="auditPanel">
             <h3>Audit log</h3>
             <div class="form-grid" id="auditGrid"></div>
           </div>
@@ -532,7 +593,14 @@
         fields: [
           { key: "pricingRuleDetailId", label: "PRICING_RULE_DETAIL_ID", required: true, type: "number", note: "ID manual obligatorio.", width: 126 },
           { key: "pricingRuleId", label: "PRICING_RULE_ID", required: true, type: "number", note: "Debe existir antes de crear el detail.", width: 114 },
-          { key: "entityTypeIdDetail", label: "ENTITY_TYPE_ID", required: true, type: "number", width: 104 },
+          { key: "entityTypeIdDetail", label: "ENTITY_TYPE_ID", required: true, type: "select", width: 188, options: [
+            { value: "1", label: "1    Activity" },
+            { value: "2", label: "2    Category" },
+            { value: "3", label: "3    Segment" },
+            { value: "4", label: "4    Settlement" },
+            { value: "5", label: "5    Installment" },
+            { value: "6", label: "6    Payment method" }
+          ] },
           { key: "objectEntityId", label: "OBJECT_ENTITY_ID", required: false, type: "number", width: 120 },
           { key: "activeTypeDetail", label: "ACTIVE_TYPE", required: false, type: "text", width: 88 },
           { key: "auditDateDetail", label: "AUDIT_DATE", required: true, type: "text", width: 248 },
@@ -548,6 +616,28 @@
       { key: "operationType", label: "OPERATION_TYPE", required: true, type: "select", width: 100, options: ["ADD", "DEL", "UPD"] },
       { key: "suboperationName", label: "SUBOPERATION_NAME", required: false, type: "text", width: 148 }
     ];
+
+    function createDefaultDetail() {
+      return {
+        pricingRuleDetailId: "",
+        pricingRuleId: "",
+        entityTypeIdDetail: "",
+        objectEntityId: "",
+        activeTypeDetail: "1",
+        auditDateDetail: "SYSDATE",
+        auditUserIdDetail: "DEVUSER"
+      };
+    }
+
+    function createDefaultDetailAudit() {
+      return {
+        auditLogId: "",
+        auditDate: "SYSDATE",
+        auditUserId: "DEVUSER",
+        operationType: "ADD",
+        suboperationName: ""
+      };
+    }
 
     const DEFAULT_STATE = {
       mode: "rule",
@@ -570,15 +660,8 @@
           auditUserIdRule: "DEVUSER",
           pricingRuleType: "V"
         },
-        detail: {
-          pricingRuleDetailId: "",
-          pricingRuleId: "",
-          entityTypeIdDetail: "",
-          objectEntityId: "",
-          activeTypeDetail: "1",
-          auditDateDetail: "SYSDATE",
-          auditUserIdDetail: "DEVUSER"
-        },
+        detail: [createDefaultDetail()],
+        detailAudits: [createDefaultDetailAudit()],
         audit: {
           auditLogId: "",
           auditDate: "SYSDATE",
@@ -597,6 +680,11 @@
     const generatorForm = document.getElementById("generatorForm");
     const fieldGrid = document.getElementById("fieldGrid");
     const auditGrid = document.getElementById("auditGrid");
+    const auditPanel = document.getElementById("auditPanel");
+    const detailStack = document.getElementById("detailStack");
+    const detailControls = document.getElementById("detailControls");
+    const addDetailButton = document.getElementById("addDetailButton");
+    const removeDetailButton = document.getElementById("removeDetailButton");
     const sqlEditor = document.getElementById("sqlEditor");
     const formTitle = document.getElementById("formTitle");
     const entityBadge = document.getElementById("entityBadge");
@@ -619,11 +707,33 @@
     document.querySelectorAll(".tab").forEach((tab) => {
       tab.addEventListener("click", () => {
         state.mode = tab.dataset.mode;
+        ensureDetailCollections();
         syncAuditUserId();
         clearStatus();
         render();
         persistState();
       });
+    });
+
+    addDetailButton.addEventListener("click", () => {
+      ensureDetailCollections();
+      state.forms.detail.push(createDefaultDetail());
+      state.forms.detailAudits.push(createDefaultDetailAudit());
+      clearStatus();
+      render();
+      persistState();
+    });
+
+    removeDetailButton.addEventListener("click", () => {
+      ensureDetailCollections();
+      if (state.forms.detail.length === 1) {
+        return;
+      }
+      state.forms.detail.pop();
+      state.forms.detailAudits.pop();
+      clearStatus();
+      render();
+      persistState();
     });
 
     generatorForm.addEventListener("input", handleInputChange);
@@ -646,7 +756,11 @@
 
     restoreDefaultsButton.addEventListener("click", () => {
       state.forms[state.mode] = clone(DEFAULT_STATE.forms[state.mode]);
-      state.forms.audit = clone(DEFAULT_STATE.forms.audit);
+      if (state.mode === "rule") {
+        state.forms.audit = clone(DEFAULT_STATE.forms.audit);
+      } else {
+        state.forms.detailAudits = clone(DEFAULT_STATE.forms.detailAudits);
+      }
       syncAuditUserId();
       clearStatus();
       render();
@@ -663,6 +777,7 @@
     clearStorageButton.addEventListener("click", () => {
       localStorage.removeItem(STORAGE_KEY);
       Object.assign(state, clone(DEFAULT_STATE));
+      ensureDetailCollections();
       syncAuditUserId();
       lastGeneratedSql = "";
       clearStatus();
@@ -681,21 +796,31 @@
 
     function render() {
       const schema = FIELD_SCHEMAS[state.mode];
+      ensureDetailCollections();
       syncAuditUserId();
       formTitle.textContent = schema.title;
       entityBadge.textContent = "ENTITY_TYPE_ID " + schema.entityTypeId;
       editorSummary.textContent = schema.summary;
+      detailControls.classList.toggle("hidden", state.mode !== "detail");
+      fieldGrid.classList.toggle("hidden", state.mode === "detail");
+      auditPanel.classList.toggle("hidden", state.mode === "detail");
+      detailStack.classList.toggle("hidden", state.mode !== "detail");
+      removeDetailButton.disabled = state.mode !== "detail" || state.forms.detail.length === 1;
       document.querySelectorAll(".tab").forEach((tab) => {
         const isActive = tab.dataset.mode === state.mode;
         tab.classList.toggle("active", isActive);
         tab.setAttribute("aria-selected", String(isActive));
       });
-      renderFields(fieldGrid, schema.fields, state.forms[state.mode]);
-      renderFields(auditGrid, AUDIT_FIELDS, state.forms.audit);
+      if (state.mode === "rule") {
+        renderFields(fieldGrid, schema.fields, state.forms.rule);
+        renderFields(auditGrid, AUDIT_FIELDS, state.forms.audit);
+      } else {
+        renderDetailEntries();
+      }
       sqlEditor.value = state.editorSql || lastGeneratedSql || "";
     }
 
-    function renderFields(container, fields, values) {
+    function renderFields(container, fields, values, options = {}) {
       container.innerHTML = "";
       fields.forEach((field) => {
         const wrapper = document.createElement("div");
@@ -703,7 +828,8 @@
         wrapper.style.setProperty("--field-width", (field.width || 120) + "px");
 
         const label = document.createElement("label");
-        label.setAttribute("for", field.key);
+        const inputId = options.idPrefix ? options.idPrefix + "-" + field.key : field.key;
+        label.setAttribute("for", inputId);
         label.textContent = field.label + (field.required ? " *" : "");
 
         const input = field.type === "textarea"
@@ -720,16 +846,27 @@
         if (input.tagName === "SELECT") {
           field.options.forEach((optionValue) => {
             const option = document.createElement("option");
-            option.value = optionValue;
-            option.textContent = optionValue;
+            if (typeof optionValue === "object") {
+              option.value = optionValue.value;
+              option.textContent = optionValue.label;
+            } else {
+              option.value = optionValue;
+              option.textContent = optionValue;
+            }
             input.appendChild(option);
           });
         }
 
-        input.id = field.key;
+        input.id = inputId;
         input.name = field.key;
         input.value = values[field.key] ?? "";
         input.placeholder = field.placeholder || "";
+        if (options.bucket) {
+          input.dataset.bucket = options.bucket;
+        }
+        if (options.index !== undefined) {
+          input.dataset.index = String(options.index);
+        }
         if (field.required) {
           input.setAttribute("aria-required", "true");
         }
@@ -747,20 +884,75 @@
       });
     }
 
+    function renderDetailEntries() {
+      detailStack.innerHTML = "";
+      state.forms.detail.forEach((detailValues, index) => {
+        const entry = document.createElement("section");
+        entry.className = "detail-entry";
+
+        const title = document.createElement("h3");
+        title.className = "detail-entry-title";
+        title.textContent = "pricing_rule_detail #" + (index + 1);
+
+        const detailGrid = document.createElement("div");
+        detailGrid.className = "form-grid detail-fields-grid";
+        detailGrid.id = "detailGrid-" + index;
+
+        const auditSection = document.createElement("div");
+        auditSection.className = "subpanel";
+
+        const auditTitle = document.createElement("h3");
+        auditTitle.textContent = "Audit log #" + (index + 1);
+
+        const auditFieldsGrid = document.createElement("div");
+        auditFieldsGrid.className = "form-grid detail-audit-grid";
+        auditFieldsGrid.id = "detailAuditGrid-" + index;
+
+        renderFields(detailGrid, FIELD_SCHEMAS.detail.fields, detailValues, {
+          bucket: "detail",
+          index,
+          idPrefix: "detail-" + index
+        });
+        renderFields(auditFieldsGrid, AUDIT_FIELDS, state.forms.detailAudits[index], {
+          bucket: "detailAudits",
+          index,
+          idPrefix: "detail-audit-" + index
+        });
+
+        auditSection.append(auditTitle, auditFieldsGrid);
+        entry.append(title, detailGrid, auditSection);
+        detailStack.appendChild(entry);
+      });
+    }
+
     function handleInputChange(event) {
       const target = event.target;
       if (!target.name) {
         return;
       }
-      const formBucket = findFormBucket(target.name);
-      state.forms[formBucket][target.name] = target.value;
+      const formBucket = target.dataset.bucket || findFormBucket(target.name);
+      const index = target.dataset.index === undefined ? null : Number(target.dataset.index);
 
-      if (target.name === "auditUserIdRule" || target.name === "auditUserIdDetail") {
+      if (index === null) {
+        state.forms[formBucket][target.name] = target.value;
+      } else {
+        state.forms[formBucket][index][target.name] = target.value;
+      }
+
+      if (target.name === "auditUserIdRule") {
         state.forms.audit.auditUserId = target.value;
       }
 
+      if (target.name === "auditUserIdDetail" && index !== null) {
+        state.forms.detailAudits[index].auditUserId = target.value;
+      }
+
       if (target.name === "auditUserId") {
-        state.forms[state.mode][getActiveAuditUserFieldKey()] = target.value;
+        if (index === null) {
+          state.forms.rule.auditUserIdRule = target.value;
+        } else {
+          state.forms.detail[index].auditUserIdDetail = target.value;
+        }
       }
 
       if (target.name === "pricingRuleId" && state.mode === "rule") {
@@ -787,30 +979,55 @@
     }
 
     function validateCurrentForm() {
-      const schema = FIELD_SCHEMAS[state.mode];
-      const currentValues = state.forms[state.mode];
+      if (state.mode === "rule") {
+        const currentValues = state.forms.rule;
 
-      for (const field of schema.fields) {
-        if (field.required && isBlank(currentValues[field.key])) {
-          return { valid: false, message: "Falta completar " + field.label + "." };
+        for (const field of FIELD_SCHEMAS.rule.fields) {
+          if (field.required && isBlank(currentValues[field.key])) {
+            return { valid: false, message: "Falta completar " + field.label + "." };
+          }
+          if (field.type === "number" && !isBlank(currentValues[field.key]) && !isNumeric(currentValues[field.key])) {
+            return { valid: false, message: field.label + " debe ser numérico." };
+          }
         }
-        if (field.type === "number" && !isBlank(currentValues[field.key]) && !isNumeric(currentValues[field.key])) {
-          return { valid: false, message: field.label + " debe ser numérico." };
-        }
-      }
 
-      for (const field of AUDIT_FIELDS) {
-        const value = state.forms.audit[field.key];
-        if (field.required && isBlank(value)) {
-          return { valid: false, message: "Falta completar " + field.label + " del audit_log." };
+        for (const field of AUDIT_FIELDS) {
+          const value = state.forms.audit[field.key];
+          if (field.required && isBlank(value)) {
+            return { valid: false, message: "Falta completar " + field.label + " del audit_log." };
+          }
+          if (field.type === "number" && !isBlank(value) && !isNumeric(value)) {
+            return { valid: false, message: field.label + " del audit_log debe ser numérico." };
+          }
         }
-        if (field.type === "number" && !isBlank(value) && !isNumeric(value)) {
-          return { valid: false, message: field.label + " del audit_log debe ser numérico." };
-        }
-      }
+      } else {
+        for (let index = 0; index < state.forms.detail.length; index += 1) {
+          const detailValues = state.forms.detail[index];
+          const auditValues = state.forms.detailAudits[index];
 
-      if (state.mode === "detail" && isBlank(currentValues.pricingRuleId)) {
-        return { valid: false, message: "pricing_rule_detail necesita un PRICING_RULE_ID existente." };
+          for (const field of FIELD_SCHEMAS.detail.fields) {
+            if (field.required && isBlank(detailValues[field.key])) {
+              return { valid: false, message: "Falta completar " + field.label + " de pricing_rule_detail #" + (index + 1) + "." };
+            }
+            if (field.type === "number" && !isBlank(detailValues[field.key]) && !isNumeric(detailValues[field.key])) {
+              return { valid: false, message: field.label + " de pricing_rule_detail #" + (index + 1) + " debe ser numérico." };
+            }
+          }
+
+          for (const field of AUDIT_FIELDS) {
+            const value = auditValues[field.key];
+            if (field.required && isBlank(value)) {
+              return { valid: false, message: "Falta completar " + field.label + " del audit_log #" + (index + 1) + "." };
+            }
+            if (field.type === "number" && !isBlank(value) && !isNumeric(value)) {
+              return { valid: false, message: field.label + " del audit_log #" + (index + 1) + " debe ser numérico." };
+            }
+          }
+
+          if (isBlank(detailValues.pricingRuleId)) {
+            return { valid: false, message: "pricing_rule_detail #" + (index + 1) + " necesita un PRICING_RULE_ID existente." };
+          }
+        }
       }
 
       return { valid: true };
@@ -859,45 +1076,59 @@
     }
 
     function generateDetailSql() {
-      const detail = state.forms.detail;
-      const audit = buildAuditPayload("detail");
-      const objectEntityId = isBlank(detail.objectEntityId) ? detail.pricingRuleDetailId : detail.objectEntityId;
-      return [
-        "INSERT INTO T_ABKO_AUDIT_LOG (",
-        "  AUDIT_LOG_ID, ENTITY_TYPE_ID, OBJECT_ENTITY_ID, OPERATION_TYPE, SUBOPERATION_NAME, AUDIT_DATE, AUDIT_USER_ID",
-        ") VALUES (",
-        "  " + sqlValue(audit.auditLogId) + ",",
-        "  9,",
-        "  " + sqlValue(detail.pricingRuleDetailId) + ",",
-        "  " + sqlString(audit.operationType) + ",",
-        "  " + sqlNullableString(audit.suboperationName) + ",",
-        "  " + sqlTimestamp(audit.auditDate) + ",",
-        "  " + sqlString(audit.auditUserId),
-        ");",
-        "",
-        "INSERT INTO T_ABKO_PRICING_RULE_DETAIL (",
-        "  PRICING_RULE_DETAIL_ID, PRICING_RULE_ID, ENTITY_TYPE_ID, OBJECT_ENTITY_ID, ACTIVE_TYPE, AUDIT_LOG_ID, AUDIT_DATE, AUDIT_USER_ID",
-        ") VALUES (",
-        "  " + sqlValue(detail.pricingRuleDetailId) + ",",
-        "  " + sqlValue(detail.pricingRuleId) + ",",
-        "  " + sqlValue(detail.entityTypeIdDetail) + ",",
-        "  " + sqlNullableNumber(objectEntityId) + ",",
-        "  " + sqlNullableString(detail.activeTypeDetail) + ",",
-        "  " + sqlValue(audit.auditLogId) + ",",
-        "  " + sqlTimestamp(detail.auditDateDetail) + ",",
-        "  " + sqlString(detail.auditUserIdDetail),
-        ");"
-      ].join("\n");
+      return state.forms.detail.map((detail, index) => {
+        const audit = buildAuditPayload("detail", index);
+        const objectEntityId = isBlank(detail.objectEntityId) ? detail.pricingRuleDetailId : detail.objectEntityId;
+        return [
+          "INSERT INTO T_ABKO_AUDIT_LOG (",
+          "  AUDIT_LOG_ID, ENTITY_TYPE_ID, OBJECT_ENTITY_ID, OPERATION_TYPE, SUBOPERATION_NAME, AUDIT_DATE, AUDIT_USER_ID",
+          ") VALUES (",
+          "  " + sqlValue(audit.auditLogId) + ",",
+          "  9,",
+          "  " + sqlValue(detail.pricingRuleDetailId) + ",",
+          "  " + sqlString(audit.operationType) + ",",
+          "  " + sqlNullableString(audit.suboperationName) + ",",
+          "  " + sqlTimestamp(audit.auditDate) + ",",
+          "  " + sqlString(audit.auditUserId),
+          ");",
+          "",
+          "INSERT INTO T_ABKO_PRICING_RULE_DETAIL (",
+          "  PRICING_RULE_DETAIL_ID, PRICING_RULE_ID, ENTITY_TYPE_ID, OBJECT_ENTITY_ID, ACTIVE_TYPE, AUDIT_LOG_ID, AUDIT_DATE, AUDIT_USER_ID",
+          ") VALUES (",
+          "  " + sqlValue(detail.pricingRuleDetailId) + ",",
+          "  " + sqlValue(detail.pricingRuleId) + ",",
+          "  " + sqlValue(detail.entityTypeIdDetail) + ",",
+          "  " + sqlNullableNumber(objectEntityId) + ",",
+          "  " + sqlNullableString(detail.activeTypeDetail) + ",",
+          "  " + sqlValue(audit.auditLogId) + ",",
+          "  " + sqlTimestamp(detail.auditDateDetail) + ",",
+          "  " + sqlString(detail.auditUserIdDetail),
+          ");"
+        ].join("\n");
+      }).join("\n\n");
     }
 
-    function buildAuditPayload(mode) {
+    function buildAuditPayload(mode, index) {
+      if (mode === "detail") {
+        const audit = state.forms.detailAudits[index];
+        const detail = state.forms.detail[index];
+        return {
+          auditLogId: audit.auditLogId,
+          auditDate: audit.auditDate,
+          auditUserId: detail.auditUserIdDetail,
+          operationType: audit.operationType,
+          suboperationName: audit.suboperationName,
+          entityTypeId: 9
+        };
+      }
+
       return {
         auditLogId: state.forms.audit.auditLogId,
         auditDate: state.forms.audit.auditDate,
-        auditUserId: state.forms[mode][mode === "rule" ? "auditUserIdRule" : "auditUserIdDetail"],
+        auditUserId: state.forms.rule.auditUserIdRule,
         operationType: state.forms.audit.operationType,
         suboperationName: state.forms.audit.suboperationName,
-        entityTypeId: mode === "rule" ? 8 : 9
+        entityTypeId: 8
       };
     }
 
@@ -940,12 +1171,10 @@
       return value.replace(/'/g, "''");
     }
 
-    function getActiveAuditUserFieldKey() {
-      return state.mode === "rule" ? "auditUserIdRule" : "auditUserIdDetail";
-    }
-
     function syncAuditUserId() {
-      state.forms.audit.auditUserId = state.forms[state.mode][getActiveAuditUserFieldKey()];
+      if (state.mode === "rule") {
+        state.forms.audit.auditUserId = state.forms.rule.auditUserIdRule;
+      }
     }
 
     function findFormBucket(fieldName) {
@@ -962,12 +1191,25 @@
           return clone(DEFAULT_STATE);
         }
         const parsed = JSON.parse(raw);
+        const parsedDetail = parsed.forms && parsed.forms.detail ? parsed.forms.detail : undefined;
+        const parsedAudit = parsed.forms && parsed.forms.audit ? parsed.forms.audit : undefined;
+        const detailArray = Array.isArray(parsedDetail)
+          ? parsedDetail
+          : [parsedDetail || createDefaultDetail()];
+        const detailAuditsArray = parsed.forms && Array.isArray(parsed.forms.detailAudits)
+          ? parsed.forms.detailAudits
+          : [parsedAudit || createDefaultDetailAudit()];
         return {
           mode: parsed.mode || DEFAULT_STATE.mode,
           forms: {
             rule: { ...clone(DEFAULT_STATE.forms.rule), ...(parsed.forms && parsed.forms.rule ? parsed.forms.rule : {}) },
-            detail: { ...clone(DEFAULT_STATE.forms.detail), ...(parsed.forms && parsed.forms.detail ? parsed.forms.detail : {}) },
-            audit: { ...clone(DEFAULT_STATE.forms.audit), ...(parsed.forms && parsed.forms.audit ? parsed.forms.audit : {}) }
+            detail: detailArray.map((entry) => ({ ...createDefaultDetail(), ...entry })),
+            detailAudits: detailAuditsArray.map((entry, index) => ({
+              ...createDefaultDetailAudit(),
+              ...(index === 0 && !Array.isArray(parsed.forms && parsed.forms.detailAudits) && parsedAudit ? parsedAudit : {}),
+              ...entry
+            })),
+            audit: { ...clone(DEFAULT_STATE.forms.audit), ...(parsedAudit || {}) }
           },
           generatedSql: parsed.generatedSql || "",
           editorSql: parsed.editorSql || ""
@@ -1027,6 +1269,24 @@
       const offset = future.getTimezoneOffset();
       const local = new Date(future.getTime() - offset * 60000);
       return local.toISOString().slice(0, 16);
+    }
+
+    function ensureDetailCollections() {
+      if (!Array.isArray(state.forms.detail)) {
+        state.forms.detail = [createDefaultDetail()];
+      }
+      if (!Array.isArray(state.forms.detailAudits)) {
+        state.forms.detailAudits = [createDefaultDetailAudit()];
+      }
+      if (state.forms.detail.length === 0) {
+        state.forms.detail.push(createDefaultDetail());
+      }
+      while (state.forms.detailAudits.length < state.forms.detail.length) {
+        state.forms.detailAudits.push(createDefaultDetailAudit());
+      }
+      if (state.forms.detailAudits.length > state.forms.detail.length) {
+        state.forms.detailAudits = state.forms.detailAudits.slice(0, state.forms.detail.length);
+      }
     }
   </script>
 </body>
