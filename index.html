@@ -29,20 +29,22 @@
             <h2 id="formTitle">Formulario de pricing_rule</h2>
           </div>
           <div class="section-title-meta">
-            <div class="detail-controls hidden" id="detailControls" aria-label="Controles de pricing_rule_detail">
-              <button class="secondary detail-stepper" type="button" id="removeDetailButton" aria-label="Eliminar pricing_rule_detail">-</button>
-              <button class="primary detail-stepper" type="button" id="addDetailButton" aria-label="Agregar pricing_rule_detail">+</button>
+            <div class="detail-controls hidden" id="detailControls" aria-label="Controles de bloques pricing_rule_detail">
+              <button class="secondary detail-stepper" type="button" id="removeDetailButton" aria-label="Eliminar bloque pricing_rule_detail">-</button>
+              <button class="primary detail-stepper" type="button" id="addDetailButton" aria-label="Agregar bloque pricing_rule_detail">+</button>
             </div>
             <span class="subcopy" id="entityBadge">ENTITY_TYPE_ID 8</span>
           </div>
         </div>
 
         <form id="generatorForm" novalidate>
+          <div class="detail-stack hidden" id="ruleNav"></div>
+
           <div class="form-grid" id="fieldGrid"></div>
 
           <div class="detail-stack hidden" id="detailStack"></div>
 
-          <div class="subpanel" id="auditPanel">
+          <div class="subpanel hidden" id="auditPanel">
             <h3>Audit log</h3>
             <div class="form-grid" id="auditGrid"></div>
           </div>

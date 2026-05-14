@@ -11,6 +11,7 @@
 
   const generatorForm = document.getElementById("generatorForm");
   const fieldGrid = document.getElementById("fieldGrid");
+  const ruleNav = document.getElementById("ruleNav");
   const auditGrid = document.getElementById("auditGrid");
   const auditPanel = document.getElementById("auditPanel");
   const detailStack = document.getElementById("detailStack");
@@ -62,11 +63,16 @@
     formTitle.textContent = schema.title;
     entityBadge.textContent = "ENTITY_TYPE_ID " + schema.entityTypeId;
     editorSummary.textContent = schema.summary;
-    detailControls.classList.toggle("hidden", state.mode !== "detail");
-    fieldGrid.classList.toggle("hidden", state.mode === "detail");
-    auditPanel.classList.toggle("hidden", state.mode === "detail");
+    detailControls.classList.remove("hidden");
+    fieldGrid.classList.add("hidden");
+    ruleNav.classList.toggle("hidden", state.mode !== "rule");
+    auditPanel.classList.add("hidden");
     detailStack.classList.toggle("hidden", state.mode !== "detail");
-    removeDetailButton.disabled = state.mode !== "detail" || state.forms.detail.length === 1;
+    removeDetailButton.disabled = state.mode === "rule"
+      ? state.forms.ruleEntries.length === 1
+      : state.forms.detailBlocks.length === 1;
+    addDetailButton.setAttribute("aria-label", state.mode === "rule" ? "Agregar pricing_rule" : "Agregar bloque pricing_rule_detail");
+    removeDetailButton.setAttribute("aria-label", state.mode === "rule" ? "Eliminar pricing_rule" : "Eliminar bloque pricing_rule_detail");
 
     document.querySelectorAll(".tab").forEach((tab) => {
       const isActive = tab.dataset.mode === state.mode;
@@ -75,8 +81,7 @@
     });
 
     if (state.mode === "rule") {
-      renderer.renderFields(fieldGrid, schema.fields, state.forms.rule);
-      renderer.renderFields(auditGrid, config.AUDIT_FIELDS, state.forms.audit, { bucket: "audit" });
+      renderer.renderRuleEntries(state, ruleNav);
     } else {
       renderer.renderDetailEntries(state, detailStack);
     }
@@ -108,10 +113,22 @@
     }
 
     const formBucket = target.dataset.bucket || findFormBucket(target.name);
+    const ruleIndex = target.dataset.ruleIndex === undefined ? null : Number(target.dataset.ruleIndex);
+    const blockIndex = target.dataset.blockIndex === undefined ? null : Number(target.dataset.blockIndex);
     const index = target.dataset.index === undefined ? null : Number(target.dataset.index);
 
     if (formBucket === "settings") {
       state.settings[target.name] = target.value;
+    } else if (formBucket === "ruleEntries" && ruleIndex !== null) {
+      state.forms.ruleEntries[ruleIndex].rule[target.name] = target.value;
+    } else if (formBucket === "ruleEntryAudits" && ruleIndex !== null) {
+      state.forms.ruleEntries[ruleIndex].audit[target.name] = target.value;
+    } else if (formBucket === "detailBlocks" && blockIndex !== null) {
+      state.forms.detailBlocks[blockIndex][target.name] = target.value;
+    } else if (formBucket === "detailBlockDetails" && blockIndex !== null && index !== null) {
+      state.forms.detailBlocks[blockIndex].entries[index].detail[target.name] = target.value;
+    } else if (formBucket === "detailBlockAudits" && blockIndex !== null && index !== null) {
+      state.forms.detailBlocks[blockIndex].entries[index].audit[target.name] = target.value;
     } else if (index === null) {
       state.forms[formBucket][target.name] = target.value;
     } else {
@@ -129,8 +146,11 @@
       render();
     }
 
-    if (target.name === "pricingRuleId" && state.mode === "rule") {
-      state.forms.audit.objectEntityId = target.value;
+    if (formBucket === "ruleEntries" && target.name === "pricingRuleId") {
+      render();
+    }
+    if (formBucket === "detailBlocks" && target.name === "pricingRuleId") {
+      render();
     }
 
     stateManager.persistState(state);
@@ -149,8 +169,23 @@
 
   addDetailButton.addEventListener("click", () => {
     stateManager.ensureDetailCollections(state);
-    state.forms.detail.push(config.createDefaultDetail());
-    state.forms.detailAudits.push(config.createDefaultDetailAudit());
+    if (state.mode === "rule") {
+      const referenceEntry = state.forms.ruleEntries[0];
+      const nextEntry = config.createDefaultRuleEntry();
+      nextEntry.rule.pricingRuleIdMode = referenceEntry.rule.pricingRuleIdMode;
+      nextEntry.audit.auditLogIdMode = referenceEntry.audit.auditLogIdMode;
+      state.forms.ruleEntries.push(nextEntry);
+      state.ui.activeRuleIndex = state.forms.ruleEntries.length - 1;
+      stateManager.syncAuditUserId(state);
+      clearStatus();
+      render();
+      stateManager.persistState(state);
+      return;
+    }
+
+    state.forms.detailBlocks.push(config.createDefaultDetailBlock());
+    state.ui.activeDetailBlockIndex = state.forms.detailBlocks.length - 1;
+    stateManager.syncAuditUserId(state);
     clearStatus();
     render();
     stateManager.persistState(state);
@@ -158,14 +193,71 @@
 
   removeDetailButton.addEventListener("click", () => {
     stateManager.ensureDetailCollections(state);
-    if (state.forms.detail.length === 1) {
+    if (state.mode === "rule") {
+      if (state.forms.ruleEntries.length === 1) {
+        return;
+      }
+      state.forms.ruleEntries.pop();
+      state.ui.activeRuleIndex = Math.max(0, state.forms.ruleEntries.length - 1);
+      clearStatus();
+      render();
+      stateManager.persistState(state);
       return;
     }
-    state.forms.detail.pop();
-    state.forms.detailAudits.pop();
+
+    if (state.forms.detailBlocks.length === 1) {
+      return;
+    }
+    state.forms.detailBlocks.splice(state.ui.activeDetailBlockIndex, 1);
+    state.ui.activeDetailBlockIndex = Math.max(0, state.ui.activeDetailBlockIndex - 1);
     clearStatus();
     render();
     stateManager.persistState(state);
+  });
+
+  detailStack.addEventListener("click", (event) => {
+    const target = event.target.closest("button");
+    if (!target) {
+      return;
+    }
+
+    if (target.dataset.blockTabIndex !== undefined) {
+      state.ui.activeDetailBlockIndex = Number(target.dataset.blockTabIndex);
+      clearStatus();
+      render();
+      stateManager.persistState(state);
+      return;
+    }
+
+    if (target.dataset.action === "add-detail-entry") {
+      const activeBlock = state.forms.detailBlocks[state.ui.activeDetailBlockIndex];
+      const referenceEntry = activeBlock.entries[0];
+      const nextDetail = config.createDefaultDetail();
+      const nextAudit = config.createDefaultDetailAudit();
+      nextDetail.pricingRuleDetailIdMode = referenceEntry.detail.pricingRuleDetailIdMode;
+      nextAudit.auditLogIdMode = referenceEntry.audit.auditLogIdMode;
+
+      activeBlock.entries.push({
+        detail: nextDetail,
+        audit: nextAudit
+      });
+      stateManager.syncAuditUserId(state);
+      clearStatus();
+      render();
+      stateManager.persistState(state);
+      return;
+    }
+
+    if (target.dataset.action === "remove-detail-entry") {
+      const activeBlock = state.forms.detailBlocks[state.ui.activeDetailBlockIndex];
+      if (activeBlock.entries.length === 1) {
+        return;
+      }
+      activeBlock.entries.pop();
+      clearStatus();
+      render();
+      stateManager.persistState(state);
+    }
   });
 
   generatorForm.addEventListener("input", handleInputChange);
@@ -193,6 +285,7 @@
     stateManager.resetModeDefaults(state);
     clearStatus();
     render();
+    stateManager.persistState(state);
     regenerate();
   });
 

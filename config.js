@@ -2,11 +2,50 @@
   const utils = window.PricingRuleUtils;
   const DEFAULT_AUDIT_USER_ID = "DEVUSER";
 
+  function createDefaultRuleValues() {
+    return {
+      pricingRuleId: "",
+      pricingRuleIdMode: "manual",
+      pricingRuleName: "",
+      progressiveType: "UNIQUE",
+      feeType: "PE",
+      totalFeeNumber: "",
+      precedenceType: "",
+      parentPricingRuleId: "",
+      entityVersionId: "1",
+      pricingRuleStatusType: "PAA",
+      startingDate: utils.addHoursDateTimeLocal(-1),
+      finishDate: "",
+      commentsDesc: "",
+      activeType: "1",
+      auditDateRule: "SYSDATE",
+      auditUserIdRule: DEFAULT_AUDIT_USER_ID,
+      pricingRuleType: "V"
+    };
+  }
+
+  function createDefaultRuleAudit() {
+    return {
+      auditLogId: "",
+      auditLogIdMode: "manual",
+      auditDate: "SYSDATE",
+      auditUserId: DEFAULT_AUDIT_USER_ID,
+      operationType: "ADD",
+      suboperationName: ""
+    };
+  }
+
+  function createDefaultRuleEntry() {
+    return {
+      rule: createDefaultRuleValues(),
+      audit: createDefaultRuleAudit()
+    };
+  }
+
   function createDefaultDetail() {
     return {
       pricingRuleDetailId: "",
       pricingRuleDetailIdMode: "manual",
-      pricingRuleId: "",
       entityTypeIdDetail: "1",
       objectEntityId: "",
       activeTypeDetail: "1",
@@ -23,6 +62,18 @@
       auditUserId: DEFAULT_AUDIT_USER_ID,
       operationType: "ADD",
       suboperationName: ""
+    };
+  }
+
+  function createDefaultDetailBlock() {
+    return {
+      pricingRuleId: "",
+      entries: [
+        {
+          detail: createDefaultDetail(),
+          audit: createDefaultDetailAudit()
+        }
+      ]
     };
   }
 
@@ -58,7 +109,6 @@
       summary: "Se generará audit_log + pricing_rule_detail.",
       fields: [
         { key: "pricingRuleDetailId", label: "PRICING_RULE_DETAIL_ID", required: true, type: "number", note: "Elige si lo cargas manualmente o si se calcula como MAX + 1.", width: 220, idModeKey: "pricingRuleDetailIdMode" },
-        { key: "pricingRuleId", label: "PRICING_RULE_ID", required: true, type: "number", note: "Debe existir antes de crear el detail.", width: 114 },
         { key: "entityTypeIdDetail", label: "ENTITY_TYPE_ID", required: true, type: "select", width: 168, options: [
           { value: "1", label: "1    Activity" },
           { value: "2", label: "2    Category" },
@@ -75,6 +125,10 @@
     }
   };
 
+  const DETAIL_BLOCK_FIELDS = [
+    { key: "pricingRuleId", label: "PRICING_RULE_ID", required: true, type: "number", note: "Se comparte entre todos los pricing_rule_detail del bloque activo.", width: 180 }
+  ];
+
   const AUDIT_FIELDS = [
     { key: "auditLogId", label: "AUDIT_LOG_ID", required: true, type: "number", note: "Elige si lo cargas manualmente o si se calcula como MAX + 1.", width: 220, idModeKey: "auditLogIdMode" },
     { key: "auditDate", label: "AUDIT_DATE", required: true, type: "text", width: 248 },
@@ -90,35 +144,12 @@
         globalAuditUserId: DEFAULT_AUDIT_USER_ID
       },
       forms: {
-        rule: {
-          pricingRuleId: "",
-          pricingRuleIdMode: "manual",
-          pricingRuleName: "",
-          progressiveType: "UNIQUE",
-          feeType: "PE",
-          totalFeeNumber: "",
-          precedenceType: "",
-          parentPricingRuleId: "",
-          entityVersionId: "1",
-          pricingRuleStatusType: "PAA",
-          startingDate: utils.addHoursDateTimeLocal(-1),
-          finishDate: "",
-          commentsDesc: "",
-          activeType: "1",
-          auditDateRule: "SYSDATE",
-          auditUserIdRule: DEFAULT_AUDIT_USER_ID,
-          pricingRuleType: "V"
-        },
-        detail: [createDefaultDetail()],
-        detailAudits: [createDefaultDetailAudit()],
-        audit: {
-          auditLogId: "",
-          auditLogIdMode: "manual",
-          auditDate: "SYSDATE",
-          auditUserId: DEFAULT_AUDIT_USER_ID,
-          operationType: "ADD",
-          suboperationName: ""
-        }
+        ruleEntries: [createDefaultRuleEntry()],
+        detailBlocks: [createDefaultDetailBlock()],
+      },
+      ui: {
+        activeRuleIndex: 0,
+        activeDetailBlockIndex: 0
       },
       generatedSql: "",
       editorSql: ""
@@ -129,9 +160,14 @@
     STORAGE_KEY,
     DEFAULT_AUDIT_USER_ID,
     FIELD_SCHEMAS,
+    DETAIL_BLOCK_FIELDS,
     AUDIT_FIELDS,
+    createDefaultRuleValues,
+    createDefaultRuleAudit,
+    createDefaultRuleEntry,
     createDefaultDetail,
     createDefaultDetailAudit,
+    createDefaultDetailBlock,
     createDefaultState
   };
 }());

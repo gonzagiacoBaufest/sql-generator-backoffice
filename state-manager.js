@@ -2,33 +2,117 @@
   const config = window.PricingRuleConfig;
   const utils = window.PricingRuleUtils;
 
+  function createNormalizedRuleEntry(entry) {
+    const rule = entry && entry.rule ? entry.rule : entry || {};
+    const audit = entry && entry.audit ? entry.audit : {};
+
+    return {
+      rule: { ...config.createDefaultRuleValues(), ...rule },
+      audit: { ...config.createDefaultRuleAudit(), ...audit }
+    };
+  }
+
+  function migrateLegacyRuleEntries(parsedRule, parsedAudit) {
+    return [createNormalizedRuleEntry({
+      rule: parsedRule || config.createDefaultRuleValues(),
+      audit: parsedAudit || config.createDefaultRuleAudit()
+    })];
+  }
+
+  function createNormalizedBlockEntry(entry) {
+    const detail = entry && entry.detail ? entry.detail : entry || {};
+    const audit = entry && entry.audit ? entry.audit : {};
+
+    return {
+      detail: { ...config.createDefaultDetail(), ...detail },
+      audit: { ...config.createDefaultDetailAudit(), ...audit }
+    };
+  }
+
+  function createNormalizedBlock(block) {
+    const normalizedEntries = Array.isArray(block && block.entries)
+      ? block.entries.map((entry) => createNormalizedBlockEntry(entry))
+      : [createNormalizedBlockEntry()];
+
+    return {
+      ...config.createDefaultDetailBlock(),
+      ...(block || {}),
+      entries: normalizedEntries.length > 0 ? normalizedEntries : [createNormalizedBlockEntry()]
+    };
+  }
+
+  function migrateLegacyDetailBlocks(detailArray, detailAuditsArray) {
+    const blocks = [];
+    const blockByRuleId = new Map();
+
+    detailArray.forEach((entry, index) => {
+      const pricingRuleId = entry.pricingRuleId || "";
+      const blockKey = pricingRuleId || "__blank__";
+      let block = blockByRuleId.get(blockKey);
+
+      if (!block) {
+        block = config.createDefaultDetailBlock();
+        block.pricingRuleId = pricingRuleId;
+        block.entries = [];
+        blockByRuleId.set(blockKey, block);
+        blocks.push(block);
+      }
+
+      const detail = { ...config.createDefaultDetail(), ...entry };
+      delete detail.pricingRuleId;
+
+      block.entries.push({
+        detail,
+        audit: { ...config.createDefaultDetailAudit(), ...(detailAuditsArray[index] || {}) }
+      });
+    });
+
+    return blocks.length > 0 ? blocks.map((block) => createNormalizedBlock(block)) : [config.createDefaultDetailBlock()];
+  }
+
   function ensureDetailCollections(state) {
-    if (!Array.isArray(state.forms.detail)) {
-      state.forms.detail = [config.createDefaultDetail()];
+    if (!state.forms || !Array.isArray(state.forms.ruleEntries)) {
+      state.forms.ruleEntries = [config.createDefaultRuleEntry()];
     }
-    if (!Array.isArray(state.forms.detailAudits)) {
-      state.forms.detailAudits = [config.createDefaultDetailAudit()];
+
+    state.forms.ruleEntries = state.forms.ruleEntries.map((entry) => createNormalizedRuleEntry(entry));
+    if (state.forms.ruleEntries.length === 0) {
+      state.forms.ruleEntries.push(config.createDefaultRuleEntry());
     }
-    if (state.forms.detail.length === 0) {
-      state.forms.detail.push(config.createDefaultDetail());
+
+    if (!state.forms || !Array.isArray(state.forms.detailBlocks)) {
+      state.forms.detailBlocks = [config.createDefaultDetailBlock()];
     }
-    while (state.forms.detailAudits.length < state.forms.detail.length) {
-      state.forms.detailAudits.push(config.createDefaultDetailAudit());
+
+    state.forms.detailBlocks = state.forms.detailBlocks.map((block) => createNormalizedBlock(block));
+    if (state.forms.detailBlocks.length === 0) {
+      state.forms.detailBlocks.push(config.createDefaultDetailBlock());
     }
-    if (state.forms.detailAudits.length > state.forms.detail.length) {
-      state.forms.detailAudits = state.forms.detailAudits.slice(0, state.forms.detail.length);
+
+    if (!state.ui) {
+      state.ui = { activeRuleIndex: 0, activeDetailBlockIndex: 0 };
     }
+
+    const maxRuleIndex = state.forms.ruleEntries.length - 1;
+    const requestedRuleIndex = Number(state.ui.activeRuleIndex || 0);
+    state.ui.activeRuleIndex = Math.min(Math.max(requestedRuleIndex, 0), maxRuleIndex);
+
+    const maxIndex = state.forms.detailBlocks.length - 1;
+    const requestedIndex = Number(state.ui.activeDetailBlockIndex || 0);
+    state.ui.activeDetailBlockIndex = Math.min(Math.max(requestedIndex, 0), maxIndex);
   }
 
   function syncAuditUserId(state) {
     const globalAuditUserId = (state.settings && state.settings.globalAuditUserId) || config.DEFAULT_AUDIT_USER_ID;
-    state.forms.rule.auditUserIdRule = globalAuditUserId;
-    state.forms.audit.auditUserId = globalAuditUserId;
-    state.forms.detail.forEach((detailEntry) => {
-      detailEntry.auditUserIdDetail = globalAuditUserId;
+    state.forms.ruleEntries.forEach((entry) => {
+      entry.rule.auditUserIdRule = globalAuditUserId;
+      entry.audit.auditUserId = globalAuditUserId;
     });
-    state.forms.detailAudits.forEach((auditEntry) => {
-      auditEntry.auditUserId = globalAuditUserId;
+    state.forms.detailBlocks.forEach((block) => {
+      block.entries.forEach((entry) => {
+        entry.detail.auditUserIdDetail = globalAuditUserId;
+        entry.audit.auditUserId = globalAuditUserId;
+      });
     });
   }
 
@@ -41,28 +125,30 @@
       const parsed = JSON.parse(raw);
       const defaults = config.createDefaultState();
       const parsedForms = parsed.forms || {};
+      const parsedRule = parsedForms.rule;
       const parsedDetail = parsedForms.detail;
       const parsedAudit = parsedForms.audit;
+      const ruleEntries = Array.isArray(parsedForms.ruleEntries)
+        ? parsedForms.ruleEntries.map((entry) => createNormalizedRuleEntry(entry))
+        : migrateLegacyRuleEntries(parsedRule, parsedAudit);
       const detailArray = Array.isArray(parsedDetail)
         ? parsedDetail
         : [parsedDetail || config.createDefaultDetail()];
       const detailAuditsArray = Array.isArray(parsedForms.detailAudits)
         ? parsedForms.detailAudits
         : [parsedAudit || config.createDefaultDetailAudit()];
+      const detailBlocks = Array.isArray(parsedForms.detailBlocks)
+        ? parsedForms.detailBlocks.map((block) => createNormalizedBlock(block))
+        : migrateLegacyDetailBlocks(detailArray, detailAuditsArray);
 
       const state = {
         mode: parsed.mode || defaults.mode,
         settings: { ...defaults.settings, ...(parsed.settings || {}) },
         forms: {
-          rule: { ...defaults.forms.rule, ...(parsedForms.rule || {}) },
-          detail: detailArray.map((entry) => ({ ...config.createDefaultDetail(), ...entry })),
-          detailAudits: detailAuditsArray.map((entry, index) => ({
-            ...config.createDefaultDetailAudit(),
-            ...(index === 0 && !Array.isArray(parsedForms.detailAudits) && parsedAudit ? parsedAudit : {}),
-            ...entry
-          })),
-          audit: { ...defaults.forms.audit, ...(parsedAudit || {}) }
+          ruleEntries,
+          detailBlocks,
         },
+        ui: { ...defaults.ui, ...(parsed.ui || {}) },
         generatedSql: parsed.generatedSql || "",
         editorSql: parsed.editorSql || ""
       };
@@ -80,12 +166,19 @@
   }
 
   function resetModeDefaults(state) {
-    const defaults = config.createDefaultState();
-    state.forms[state.mode] = utils.clone(defaults.forms[state.mode]);
     if (state.mode === "rule") {
-      state.forms.audit = utils.clone(defaults.forms.audit);
+      ensureDetailCollections(state);
+      state.forms.ruleEntries = state.forms.ruleEntries.map(() => config.createDefaultRuleEntry());
+      state.ui.activeRuleIndex = 0;
     } else {
-      state.forms.detailAudits = utils.clone(defaults.forms.detailAudits);
+      ensureDetailCollections(state);
+      const activeBlock = state.forms.detailBlocks[state.ui.activeDetailBlockIndex];
+      const resetBlock = config.createDefaultDetailBlock();
+      resetBlock.entries = activeBlock.entries.map(() => ({
+        detail: config.createDefaultDetail(),
+        audit: config.createDefaultDetailAudit()
+      }));
+      state.forms.detailBlocks[state.ui.activeDetailBlockIndex] = resetBlock;
     }
     ensureDetailCollections(state);
     syncAuditUserId(state);

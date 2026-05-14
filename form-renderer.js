@@ -1,6 +1,16 @@
 (function () {
   const config = window.PricingRuleConfig;
 
+  function buildRuleTitle(entryValues, index) {
+    const pricingRuleId = String(entryValues.rule.pricingRuleId || "").trim();
+    return pricingRuleId ? "pricing_rule #" + (index + 1) + " - PRICING_RULE_ID " + pricingRuleId : "pricing_rule #" + (index + 1);
+  }
+
+  function buildBlockTitle(blockValues, index) {
+    const pricingRuleId = String(blockValues.pricingRuleId || "").trim();
+    return pricingRuleId ? "Bloque " + (index + 1) + " - PRICING_RULE_ID " + pricingRuleId : "Bloque " + (index + 1);
+  }
+
   function buildIdModeControl(field, values, inputId) {
     const group = document.createElement("div");
     group.className = "id-mode-group";
@@ -60,6 +70,12 @@
         if (renderOptions.bucket) {
           idModeControl.modeSelect.dataset.bucket = renderOptions.bucket;
         }
+        if (renderOptions.ruleIndex !== undefined) {
+          idModeControl.modeSelect.dataset.ruleIndex = String(renderOptions.ruleIndex);
+        }
+        if (renderOptions.blockIndex !== undefined) {
+          idModeControl.modeSelect.dataset.blockIndex = String(renderOptions.blockIndex);
+        }
         if (renderOptions.index !== undefined) {
           idModeControl.modeSelect.dataset.index = String(renderOptions.index);
         }
@@ -95,6 +111,12 @@
       if (renderOptions.bucket) {
         input.dataset.bucket = renderOptions.bucket;
       }
+      if (renderOptions.ruleIndex !== undefined) {
+        input.dataset.ruleIndex = String(renderOptions.ruleIndex);
+      }
+      if (renderOptions.blockIndex !== undefined) {
+        input.dataset.blockIndex = String(renderOptions.blockIndex);
+      }
       if (renderOptions.index !== undefined) {
         input.dataset.index = String(renderOptions.index);
       }
@@ -117,7 +139,74 @@
 
   function renderDetailEntries(state, detailStack) {
     detailStack.innerHTML = "";
-    state.forms.detail.forEach((detailValues, index) => {
+
+    const blockNav = document.createElement("div");
+    blockNav.className = "detail-block-nav";
+
+    const blockTabList = document.createElement("div");
+    blockTabList.className = "detail-block-tablist";
+    blockTabList.setAttribute("role", "tablist");
+    blockTabList.setAttribute("aria-label", "Bloques de pricing_rule_detail");
+
+    state.forms.detailBlocks.forEach((blockValues, index) => {
+      const blockTab = document.createElement("button");
+      const isActive = index === state.ui.activeDetailBlockIndex;
+      blockTab.type = "button";
+      blockTab.className = "detail-block-tab" + (isActive ? " active" : "");
+      blockTab.dataset.blockTabIndex = String(index);
+      blockTab.setAttribute("role", "tab");
+      blockTab.setAttribute("aria-selected", String(isActive));
+      blockTab.textContent = buildBlockTitle(blockValues, index);
+      blockTabList.appendChild(blockTab);
+    });
+
+    blockNav.appendChild(blockTabList);
+    detailStack.appendChild(blockNav);
+
+    const activeBlock = state.forms.detailBlocks[state.ui.activeDetailBlockIndex];
+    const activeBlockIndex = state.ui.activeDetailBlockIndex;
+    const blockSection = document.createElement("section");
+    blockSection.className = "detail-block-section";
+
+    const blockHeader = document.createElement("div");
+    blockHeader.className = "detail-block-header";
+
+    const blockTitle = document.createElement("h3");
+    blockTitle.className = "detail-entry-title";
+    blockTitle.textContent = buildBlockTitle(activeBlock, activeBlockIndex);
+
+    const blockActions = document.createElement("div");
+    blockActions.className = "detail-entry-actions";
+
+    const removeEntryButton = document.createElement("button");
+    removeEntryButton.type = "button";
+    removeEntryButton.className = "secondary detail-stepper";
+    removeEntryButton.textContent = "-";
+    removeEntryButton.dataset.action = "remove-detail-entry";
+    removeEntryButton.disabled = activeBlock.entries.length === 1;
+    removeEntryButton.setAttribute("aria-label", "Eliminar pricing_rule_detail del bloque activo");
+
+    const addEntryButton = document.createElement("button");
+    addEntryButton.type = "button";
+    addEntryButton.className = "primary detail-stepper";
+    addEntryButton.textContent = "+";
+    addEntryButton.dataset.action = "add-detail-entry";
+    addEntryButton.setAttribute("aria-label", "Agregar pricing_rule_detail al bloque activo");
+
+    blockActions.append(removeEntryButton, addEntryButton);
+    blockHeader.append(blockTitle, blockActions);
+
+    const blockFields = document.createElement("div");
+    blockFields.className = "form-grid detail-block-fields-grid";
+    renderFields(blockFields, config.DETAIL_BLOCK_FIELDS, activeBlock, {
+      bucket: "detailBlocks",
+      blockIndex: activeBlockIndex,
+      idPrefix: "detail-block-" + activeBlockIndex
+    });
+
+    blockSection.append(blockHeader, blockFields);
+
+    activeBlock.entries.forEach((entryValues, index) => {
       const entry = document.createElement("section");
       entry.className = "detail-entry";
 
@@ -137,27 +226,73 @@
 
       const auditFieldsGrid = document.createElement("div");
       auditFieldsGrid.className = "form-grid detail-audit-grid";
-      auditFieldsGrid.id = "detailAuditGrid-" + index;
+      auditFieldsGrid.id = "detailAuditGrid-" + activeBlockIndex + "-" + index;
 
-      renderFields(detailGrid, config.FIELD_SCHEMAS.detail.fields, detailValues, {
-        bucket: "detail",
+      renderFields(detailGrid, config.FIELD_SCHEMAS.detail.fields, entryValues.detail, {
+        bucket: "detailBlockDetails",
+        blockIndex: activeBlockIndex,
         index,
-        idPrefix: "detail-" + index
+        idPrefix: "detail-" + activeBlockIndex + "-" + index
       });
-      renderFields(auditFieldsGrid, config.AUDIT_FIELDS, state.forms.detailAudits[index], {
-        bucket: "detailAudits",
+      renderFields(auditFieldsGrid, config.AUDIT_FIELDS, entryValues.audit, {
+        bucket: "detailBlockAudits",
+        blockIndex: activeBlockIndex,
         index,
-        idPrefix: "detail-audit-" + index
+        idPrefix: "detail-audit-" + activeBlockIndex + "-" + index
       });
 
       auditSection.append(auditTitle, auditFieldsGrid);
       entry.append(title, detailGrid, auditSection);
-      detailStack.appendChild(entry);
+      blockSection.appendChild(entry);
+    });
+
+    detailStack.appendChild(blockSection);
+  }
+
+  function renderRuleEntries(state, container) {
+    container.innerHTML = "";
+    state.forms.ruleEntries.forEach((entryValues, index) => {
+      const section = document.createElement("section");
+      section.className = "detail-entry";
+
+      const title = document.createElement("h3");
+      title.className = "detail-entry-title";
+      title.textContent = buildRuleTitle(entryValues, index);
+
+      const ruleFieldsGrid = document.createElement("div");
+      ruleFieldsGrid.className = "form-grid detail-fields-grid";
+      ruleFieldsGrid.id = "ruleGrid-" + index;
+
+      const auditSection = document.createElement("div");
+      auditSection.className = "subpanel";
+
+      const auditTitle = document.createElement("h3");
+      auditTitle.textContent = "Audit log #" + (index + 1);
+
+      const auditFieldsGrid = document.createElement("div");
+      auditFieldsGrid.className = "form-grid detail-audit-grid";
+      auditFieldsGrid.id = "ruleAuditGrid-" + index;
+
+      renderFields(ruleFieldsGrid, config.FIELD_SCHEMAS.rule.fields, entryValues.rule, {
+        bucket: "ruleEntries",
+        ruleIndex: index,
+        idPrefix: "rule-" + index
+      });
+      renderFields(auditFieldsGrid, config.AUDIT_FIELDS, entryValues.audit, {
+        bucket: "ruleEntryAudits",
+        ruleIndex: index,
+        idPrefix: "rule-audit-" + index
+      });
+
+      auditSection.append(auditTitle, auditFieldsGrid);
+      section.append(title, ruleFieldsGrid, auditSection);
+      container.appendChild(section);
     });
   }
 
   window.PricingRuleRenderer = {
     renderFields,
-    renderDetailEntries
+    renderDetailEntries,
+    renderRuleEntries
   };
 }());

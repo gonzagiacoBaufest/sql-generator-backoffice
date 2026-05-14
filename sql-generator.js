@@ -43,10 +43,11 @@
     ].join("\n");
   }
 
-  function buildAuditPayload(state, mode, index) {
+  function buildAuditPayload(state, mode, primaryIndex, entryIndex) {
     if (mode === "detail") {
-      const audit = state.forms.detailAudits[index];
-      const detail = state.forms.detail[index];
+      const entry = state.forms.detailBlocks[primaryIndex].entries[entryIndex];
+      const audit = entry.audit;
+      const detail = entry.detail;
       return {
         auditLogId: audit.auditLogId,
         auditLogIdMode: audit.auditLogIdMode,
@@ -58,55 +59,32 @@
       };
     }
 
+    if (mode === "rule") {
+      const entry = state.forms.ruleEntries[primaryIndex];
+      return {
+        auditLogId: entry.audit.auditLogId,
+        auditLogIdMode: entry.audit.auditLogIdMode,
+        auditDate: entry.audit.auditDate,
+        auditUserId: entry.rule.auditUserIdRule,
+        operationType: entry.audit.operationType,
+        suboperationName: entry.audit.suboperationName,
+        entityTypeId: 8
+      };
+    }
+
     return {
-      auditLogId: state.forms.audit.auditLogId,
-      auditLogIdMode: state.forms.audit.auditLogIdMode,
-      auditDate: state.forms.audit.auditDate,
-      auditUserId: state.forms.rule.auditUserIdRule,
-      operationType: state.forms.audit.operationType,
-      suboperationName: state.forms.audit.suboperationName,
+      auditLogId: "",
+      auditLogIdMode: "manual",
+      auditDate: "SYSDATE",
+      auditUserId: "",
+      operationType: "ADD",
+      suboperationName: "",
       entityTypeId: 8
     };
   }
 
-  function buildDetailStatements(detail, audit, auditLogIdSql, pricingRuleDetailIdSql) {
-    const objectEntityIdSql = sqlNullableNumber(detail.objectEntityId);
+  function buildRuleStatements(rule, audit, auditLogIdSql, pricingRuleIdSql) {
     return [
-      "INSERT INTO T_ABKO_AUDIT_LOG (",
-      "  AUDIT_LOG_ID, ENTITY_TYPE_ID, OBJECT_ENTITY_ID, OPERATION_TYPE, SUBOPERATION_NAME, AUDIT_DATE, AUDIT_USER_ID",
-      ") VALUES (",
-      "  " + auditLogIdSql + ",",
-      "  9,",
-      "  " + pricingRuleDetailIdSql + ",",
-      "  " + sqlString(audit.operationType) + ",",
-      "  " + sqlNullableString(audit.suboperationName) + ",",
-      "  " + sqlTimestamp(audit.auditDate) + ",",
-      "  " + sqlString(audit.auditUserId),
-      ");",
-      "",
-      "INSERT INTO T_ABKO_PRICING_RULE_DETAIL (",
-      "  PRICING_RULE_DETAIL_ID, PRICING_RULE_ID, ENTITY_TYPE_ID, OBJECT_ENTITY_ID, ACTIVE_TYPE, AUDIT_LOG_ID, AUDIT_DATE, AUDIT_USER_ID",
-      ") VALUES (",
-      "  " + pricingRuleDetailIdSql + ",",
-      "  " + sqlValue(detail.pricingRuleId) + ",",
-      "  " + sqlValue(detail.entityTypeIdDetail) + ",",
-      "  " + objectEntityIdSql + ",",
-      "  " + sqlNullableString(detail.activeTypeDetail) + ",",
-      "  " + auditLogIdSql + ",",
-      "  " + sqlTimestamp(detail.auditDateDetail) + ",",
-      "  " + sqlString(detail.auditUserIdDetail),
-      ");"
-    ];
-  }
-
-  function generateRuleSql(state) {
-    const rule = state.forms.rule;
-    const audit = buildAuditPayload(state, "rule");
-    const usesAutoAuditLogId = audit.auditLogIdMode === "auto";
-    const usesAutoPricingRuleId = rule.pricingRuleIdMode === "auto";
-    const auditLogIdSql = usesAutoAuditLogId ? "v_audit_log_id" : sqlValue(audit.auditLogId);
-    const pricingRuleIdSql = usesAutoPricingRuleId ? "v_pricing_rule_id" : sqlValue(rule.pricingRuleId);
-    const statements = [
       "INSERT INTO T_ABKO_AUDIT_LOG (",
       "  AUDIT_LOG_ID, ENTITY_TYPE_ID, OBJECT_ENTITY_ID, OPERATION_TYPE, SUBOPERATION_NAME, AUDIT_DATE, AUDIT_USER_ID",
       ") VALUES (",
@@ -143,32 +121,94 @@
       "  " + sqlNullableString(rule.pricingRuleType),
       ");"
     ];
+  }
 
-    if (!usesAutoAuditLogId && !usesAutoPricingRuleId) {
-      return statements.join("\n");
+  function buildDetailStatements(detail, pricingRuleId, audit, auditLogIdSql, pricingRuleDetailIdSql) {
+    const objectEntityIdSql = sqlNullableNumber(detail.objectEntityId);
+    return [
+      "INSERT INTO T_ABKO_AUDIT_LOG (",
+      "  AUDIT_LOG_ID, ENTITY_TYPE_ID, OBJECT_ENTITY_ID, OPERATION_TYPE, SUBOPERATION_NAME, AUDIT_DATE, AUDIT_USER_ID",
+      ") VALUES (",
+      "  " + auditLogIdSql + ",",
+      "  9,",
+      "  " + pricingRuleDetailIdSql + ",",
+      "  " + sqlString(audit.operationType) + ",",
+      "  " + sqlNullableString(audit.suboperationName) + ",",
+      "  " + sqlTimestamp(audit.auditDate) + ",",
+      "  " + sqlString(audit.auditUserId),
+      ");",
+      "",
+      "INSERT INTO T_ABKO_PRICING_RULE_DETAIL (",
+      "  PRICING_RULE_DETAIL_ID, PRICING_RULE_ID, ENTITY_TYPE_ID, OBJECT_ENTITY_ID, ACTIVE_TYPE, AUDIT_LOG_ID, AUDIT_DATE, AUDIT_USER_ID",
+      ") VALUES (",
+      "  " + pricingRuleDetailIdSql + ",",
+      "  " + sqlValue(pricingRuleId) + ",",
+      "  " + sqlValue(detail.entityTypeIdDetail) + ",",
+      "  " + objectEntityIdSql + ",",
+      "  " + sqlNullableString(detail.activeTypeDetail) + ",",
+      "  " + auditLogIdSql + ",",
+      "  " + sqlTimestamp(detail.auditDateDetail) + ",",
+      "  " + sqlString(detail.auditUserIdDetail),
+      ");"
+    ];
+  }
+
+  function generateRuleSql(state) {
+    const ruleEntries = state.forms.ruleEntries.map((entry, index) => {
+      const rule = entry.rule;
+      const audit = buildAuditPayload(state, "rule", index);
+      const usesAutoAuditLogId = audit.auditLogIdMode === "auto";
+      const usesAutoPricingRuleId = rule.pricingRuleIdMode === "auto";
+      const suffix = "_r" + (index + 1);
+      const auditLogIdVariable = "v_audit_log_id" + suffix;
+      const pricingRuleIdVariable = "v_pricing_rule_id" + suffix;
+
+      return {
+        usesAutoAuditLogId,
+        usesAutoPricingRuleId,
+        declarations: [
+          usesAutoAuditLogId ? auditLogIdVariable + " NUMBER;" : null,
+          usesAutoPricingRuleId ? pricingRuleIdVariable + " NUMBER;" : null
+        ].filter(Boolean),
+        initializers: [
+          usesAutoAuditLogId ? nextIdSelectInto(auditLogIdVariable, "T_ABKO_AUDIT_LOG", "AUDIT_LOG_ID") : null,
+          usesAutoPricingRuleId ? nextIdSelectInto(pricingRuleIdVariable, "T_ABKO_PRICING_RULE", "PRICING_RULE_ID") : null
+        ].filter(Boolean),
+        statements: buildRuleStatements(
+          rule,
+          audit,
+          usesAutoAuditLogId ? auditLogIdVariable : sqlValue(audit.auditLogId),
+          usesAutoPricingRuleId ? pricingRuleIdVariable : sqlValue(rule.pricingRuleId)
+        )
+      };
+    });
+
+    const hasAutoIds = ruleEntries.some((entry) => entry.usesAutoAuditLogId || entry.usesAutoPricingRuleId);
+    if (!hasAutoIds) {
+      return ruleEntries.map((entry) => entry.statements.join("\n")).join("\n\n");
     }
 
-    const declarations = [];
-    const initializers = [];
-    if (usesAutoAuditLogId) {
-      declarations.push("v_audit_log_id NUMBER;");
-      initializers.push(nextIdSelectInto("v_audit_log_id", "T_ABKO_AUDIT_LOG", "AUDIT_LOG_ID"));
-    }
-    if (usesAutoPricingRuleId) {
-      declarations.push("v_pricing_rule_id NUMBER;");
-      initializers.push(nextIdSelectInto("v_pricing_rule_id", "T_ABKO_PRICING_RULE", "PRICING_RULE_ID"));
-    }
+    const declarations = ruleEntries.flatMap((entry) => entry.declarations);
+    const statements = ruleEntries.flatMap((entry, index) => {
+      const entryLines = entry.initializers.concat(entry.statements);
+      if (index === 0) {
+        return entryLines;
+      }
+      return [""].concat(entryLines);
+    });
 
-    return wrapInPlSqlBlock(statements, declarations, initializers);
+    return wrapInPlSqlBlock(statements, declarations, []);
   }
 
   function generateDetailSql(state) {
-    const detailEntries = state.forms.detail.map((detail, index) => {
-      const audit = buildAuditPayload(state, "detail", index);
+    const detailEntries = state.forms.detailBlocks.flatMap((block, blockIndex) => block.entries.map((entry, entryIndex) => {
+      const detail = entry.detail;
+      const audit = buildAuditPayload(state, "detail", blockIndex, entryIndex);
       const usesAutoAuditLogId = audit.auditLogIdMode === "auto";
       const usesAutoPricingRuleDetailId = detail.pricingRuleDetailIdMode === "auto";
-      const auditLogIdVariable = "v_audit_log_id_" + (index + 1);
-      const pricingRuleDetailIdVariable = "v_pricing_rule_detail_id_" + (index + 1);
+      const suffix = "_b" + (blockIndex + 1) + "_d" + (entryIndex + 1);
+      const auditLogIdVariable = "v_audit_log_id" + suffix;
+      const pricingRuleDetailIdVariable = "v_pricing_rule_detail_id" + suffix;
 
       return {
         usesAutoAuditLogId,
@@ -183,12 +223,13 @@
         ].filter(Boolean),
         statements: buildDetailStatements(
           detail,
+          block.pricingRuleId,
           audit,
           usesAutoAuditLogId ? auditLogIdVariable : sqlValue(audit.auditLogId),
           usesAutoPricingRuleDetailId ? pricingRuleDetailIdVariable : sqlValue(detail.pricingRuleDetailId)
         )
       };
-    });
+    }));
 
     const hasAutoIds = detailEntries.some((entry) => entry.usesAutoAuditLogId || entry.usesAutoPricingRuleDetailId);
     if (!hasAutoIds) {

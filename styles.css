@@ -201,6 +201,7 @@ body {
 
 #fieldGrid,
 #auditGrid,
+.detail-block-fields-grid,
 .detail-fields-grid,
 .detail-audit-grid {
   grid-auto-flow: column;
@@ -350,6 +351,51 @@ textarea {
   gap: 32px;
 }
 
+.detail-block-nav {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.detail-block-tablist {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.detail-block-tab {
+  color: var(--muted);
+  background: var(--canvas-parchment);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-pill);
+  padding: 10px 18px;
+  font-size: 15px;
+}
+
+.detail-block-tab.active {
+  color: #fff;
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.detail-block-section {
+  display: grid;
+  gap: 24px;
+}
+
+.detail-block-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+
+.detail-entry-actions {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+}
+
 .detail-entry {
   display: grid;
   gap: 24px;
@@ -495,9 +541,16 @@ button:focus-visible,
 
   #fieldGrid,
   #auditGrid,
+  .detail-block-fields-grid,
   .detail-fields-grid,
   .detail-audit-grid {
     grid-auto-columns: minmax(96px, max-content);
+  }
+
+  .detail-block-header,
+  .panel-toolbar {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .section-title,
