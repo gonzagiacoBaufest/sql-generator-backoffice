@@ -24,11 +24,9 @@
   const editorSummary = document.getElementById("editorSummary");
   const formStatus = document.getElementById("formStatus");
   const editorStatus = document.getElementById("editorStatus");
-  const restoreGeneratedButton = document.getElementById("restoreGeneratedButton");
   const restoreDefaultsButton = document.getElementById("restoreDefaultsButton");
   const clearEditorButton = document.getElementById("clearEditorButton");
   const copySqlButton = document.getElementById("copySqlButton");
-  const clearStorageButton = document.getElementById("clearStorageButton");
   const globalAuditUserIdInput = document.getElementById("globalAuditUserId");
 
   function setFormStatus(message, tone) {
@@ -274,13 +272,6 @@
     stateManager.persistState(state);
   });
 
-  restoreGeneratedButton.addEventListener("click", () => {
-    sqlEditor.value = lastGeneratedSql;
-    state.editorSql = lastGeneratedSql;
-    stateManager.persistState(state);
-    setEditorStatus("Editor restaurado al último SQL generado.", "success");
-  });
-
   restoreDefaultsButton.addEventListener("click", () => {
     stateManager.resetModeDefaults(state);
     clearStatus();
@@ -294,15 +285,6 @@
     state.editorSql = "";
     stateManager.persistState(state);
     setEditorStatus("Editor limpio. Puedes pegar o regenerar una query nueva.", "success");
-  });
-
-  clearStorageButton.addEventListener("click", () => {
-    localStorage.removeItem(config.STORAGE_KEY);
-    stateManager.resetAllState(state);
-    lastGeneratedSql = "";
-    clearStatus();
-    render();
-    regenerate();
   });
 
   copySqlButton.addEventListener("click", async () => {
