@@ -28,6 +28,7 @@
   const clearEditorButton = document.getElementById("clearEditorButton");
   const copySqlButton = document.getElementById("copySqlButton");
   const globalAuditUserIdInput = document.getElementById("globalAuditUserId");
+  const globalTablePrefixInput = document.getElementById("globalTablePrefix");
 
   function setFormStatus(message, tone) {
     formStatus.textContent = message;
@@ -90,6 +91,7 @@
     stateManager.ensureDetailCollections(state);
     stateManager.syncAuditUserId(state);
     globalAuditUserIdInput.value = state.settings.globalAuditUserId || "";
+    globalTablePrefixInput.value = state.settings.globalTablePrefix || config.DEFAULT_TABLE_PREFIX;
     formTitle.textContent = schema.title;
     entityBadge.textContent = "ENTITY_TYPE_ID " + schema.entityTypeId;
     editorSummary.textContent = schema.summary;
@@ -167,6 +169,11 @@
 
     if (target.name === "globalAuditUserId") {
       stateManager.syncAuditUserId(state);
+      render();
+    }
+
+    if (target.name === "globalTablePrefix") {
+      state.settings.globalTablePrefix = target.value;
       render();
     }
 
@@ -294,6 +301,8 @@
   generatorForm.addEventListener("change", handleInputChange);
   globalAuditUserIdInput.addEventListener("input", handleInputChange);
   globalAuditUserIdInput.addEventListener("change", handleInputChange);
+  globalTablePrefixInput.addEventListener("input", handleInputChange);
+  globalTablePrefixInput.addEventListener("change", handleInputChange);
   generatorForm.addEventListener("submit", (event) => {
     event.preventDefault();
     regenerate();

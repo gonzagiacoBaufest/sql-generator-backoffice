@@ -166,6 +166,10 @@ body {
 }
 
 .global-settings-inline {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  flex-wrap: nowrap;
   margin-left: auto;
   padding: 0;
   border: 0;
@@ -555,6 +559,16 @@ button:focus-visible,
   .panel-toolbar {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .global-settings-inline {
+    width: 100%;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .global-settings-inline .global-setting-field {
+    width: min(360px, 100%);
   }
 
   .section-title,

@@ -1,6 +1,7 @@
 (function () {
   const utils = window.PricingRuleUtils;
   const DEFAULT_AUDIT_USER_ID = "DEVUSER";
+  const DEFAULT_TABLE_PREFIX = "T_ABKO_";
 
   function createDefaultRuleValues() {
     return {
@@ -141,7 +142,8 @@
     return {
       mode: "rule",
       settings: {
-        globalAuditUserId: DEFAULT_AUDIT_USER_ID
+        globalAuditUserId: DEFAULT_AUDIT_USER_ID,
+        globalTablePrefix: DEFAULT_TABLE_PREFIX
       },
       forms: {
         ruleEntries: [createDefaultRuleEntry()],
@@ -159,6 +161,7 @@
   window.PricingRuleConfig = {
     STORAGE_KEY,
     DEFAULT_AUDIT_USER_ID,
+    DEFAULT_TABLE_PREFIX,
     FIELD_SCHEMAS,
     DETAIL_BLOCK_FIELDS,
     AUDIT_FIELDS,

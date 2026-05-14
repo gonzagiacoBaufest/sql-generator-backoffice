@@ -1,5 +1,6 @@
 (function () {
   const utils = window.PricingRuleUtils;
+  const config = window.PricingRuleConfig;
 
   function sqlValue(value) {
     return String(value).trim();
@@ -30,6 +31,17 @@
 
   function nextIdSelectInto(variableName, tableName, columnName) {
     return "SELECT NVL(MAX(" + columnName + "), 0) + 1 INTO " + variableName + " FROM " + tableName + ";";
+  }
+
+  function resolveTablePrefix(state) {
+    const prefix = state && state.settings && !utils.isBlank(state.settings.globalTablePrefix)
+      ? String(state.settings.globalTablePrefix).trim()
+      : config.DEFAULT_TABLE_PREFIX;
+    return prefix;
+  }
+
+  function tableName(state, suffix) {
+    return resolveTablePrefix(state) + suffix;
   }
 
   function wrapInPlSqlBlock(lines, declarations, initializers) {
@@ -83,9 +95,9 @@
     };
   }
 
-  function buildRuleStatements(rule, audit, auditLogIdSql, pricingRuleIdSql) {
+  function buildRuleStatements(state, rule, audit, auditLogIdSql, pricingRuleIdSql) {
     return [
-      "INSERT INTO T_ABKO_AUDIT_LOG (",
+      "INSERT INTO " + tableName(state, "AUDIT_LOG") + " (",
       "  AUDIT_LOG_ID, ENTITY_TYPE_ID, OBJECT_ENTITY_ID, OPERATION_TYPE, SUBOPERATION_NAME, AUDIT_DATE, AUDIT_USER_ID",
       ") VALUES (",
       "  " + auditLogIdSql + ",",
@@ -97,7 +109,7 @@
       "  " + sqlString(audit.auditUserId),
       ");",
       "",
-      "INSERT INTO T_ABKO_PRICING_RULE (",
+      "INSERT INTO " + tableName(state, "PRICING_RULE") + " (",
       "  PRICING_RULE_ID, PRICING_RULE_NAME, PROGRESSIVE_TYPE, FEE_TYPE, TOTAL_FEE_NUMBER, PRECEDENCE_TYPE,",
       "  PARENT_PRICING_RULE_ID, ENTITY_VERSION_ID, PRICING_RULE_STATUS_TYPE, STARTING_DATE, FINISH_DATE, COMMENTS_DESC,",
       "  ACTIVE_TYPE, AUDIT_LOG_ID, AUDIT_DATE, AUDIT_USER_ID, PRICING_RULE_TYPE",
@@ -123,10 +135,10 @@
     ];
   }
 
-  function buildDetailStatements(detail, pricingRuleId, audit, auditLogIdSql, pricingRuleDetailIdSql) {
+  function buildDetailStatements(state, detail, pricingRuleId, audit, auditLogIdSql, pricingRuleDetailIdSql) {
     const objectEntityIdSql = sqlNullableNumber(detail.objectEntityId);
     return [
-      "INSERT INTO T_ABKO_AUDIT_LOG (",
+      "INSERT INTO " + tableName(state, "AUDIT_LOG") + " (",
       "  AUDIT_LOG_ID, ENTITY_TYPE_ID, OBJECT_ENTITY_ID, OPERATION_TYPE, SUBOPERATION_NAME, AUDIT_DATE, AUDIT_USER_ID",
       ") VALUES (",
       "  " + auditLogIdSql + ",",
@@ -138,7 +150,7 @@
       "  " + sqlString(audit.auditUserId),
       ");",
       "",
-      "INSERT INTO T_ABKO_PRICING_RULE_DETAIL (",
+      "INSERT INTO " + tableName(state, "PRICING_RULE_DETAIL") + " (",
       "  PRICING_RULE_DETAIL_ID, PRICING_RULE_ID, ENTITY_TYPE_ID, OBJECT_ENTITY_ID, ACTIVE_TYPE, AUDIT_LOG_ID, AUDIT_DATE, AUDIT_USER_ID",
       ") VALUES (",
       "  " + pricingRuleDetailIdSql + ",",
@@ -171,10 +183,11 @@
           usesAutoPricingRuleId ? pricingRuleIdVariable + " NUMBER;" : null
         ].filter(Boolean),
         initializers: [
-          usesAutoAuditLogId ? nextIdSelectInto(auditLogIdVariable, "T_ABKO_AUDIT_LOG", "AUDIT_LOG_ID") : null,
-          usesAutoPricingRuleId ? nextIdSelectInto(pricingRuleIdVariable, "T_ABKO_PRICING_RULE", "PRICING_RULE_ID") : null
+          usesAutoAuditLogId ? nextIdSelectInto(auditLogIdVariable, tableName(state, "AUDIT_LOG"), "AUDIT_LOG_ID") : null,
+          usesAutoPricingRuleId ? nextIdSelectInto(pricingRuleIdVariable, tableName(state, "PRICING_RULE"), "PRICING_RULE_ID") : null
         ].filter(Boolean),
         statements: buildRuleStatements(
+          state,
           rule,
           audit,
           usesAutoAuditLogId ? auditLogIdVariable : sqlValue(audit.auditLogId),
@@ -218,10 +231,11 @@
           usesAutoPricingRuleDetailId ? pricingRuleDetailIdVariable + " NUMBER;" : null
         ].filter(Boolean),
         initializers: [
-          usesAutoAuditLogId ? nextIdSelectInto(auditLogIdVariable, "T_ABKO_AUDIT_LOG", "AUDIT_LOG_ID") : null,
-          usesAutoPricingRuleDetailId ? nextIdSelectInto(pricingRuleDetailIdVariable, "T_ABKO_PRICING_RULE_DETAIL", "PRICING_RULE_DETAIL_ID") : null
+          usesAutoAuditLogId ? nextIdSelectInto(auditLogIdVariable, tableName(state, "AUDIT_LOG"), "AUDIT_LOG_ID") : null,
+          usesAutoPricingRuleDetailId ? nextIdSelectInto(pricingRuleDetailIdVariable, tableName(state, "PRICING_RULE_DETAIL"), "PRICING_RULE_DETAIL_ID") : null
         ].filter(Boolean),
         statements: buildDetailStatements(
+          state,
           detail,
           block.pricingRuleId,
           audit,
