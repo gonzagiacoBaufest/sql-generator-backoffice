@@ -1,0 +1,236 @@
+(function () {
+  const config = window.PricingRuleConfig;
+  const utils = window.PricingRuleUtils;
+  const validators = window.PricingRuleValidators;
+  const sql = window.PricingRuleSql;
+  const stateManager = window.PricingRuleState;
+  const renderer = window.PricingRuleRenderer;
+
+  const state = stateManager.loadState();
+  let lastGeneratedSql = state.generatedSql || "";
+
+  const generatorForm = document.getElementById("generatorForm");
+  const fieldGrid = document.getElementById("fieldGrid");
+  const auditGrid = document.getElementById("auditGrid");
+  const auditPanel = document.getElementById("auditPanel");
+  const detailStack = document.getElementById("detailStack");
+  const detailControls = document.getElementById("detailControls");
+  const addDetailButton = document.getElementById("addDetailButton");
+  const removeDetailButton = document.getElementById("removeDetailButton");
+  const sqlEditor = document.getElementById("sqlEditor");
+  const formTitle = document.getElementById("formTitle");
+  const entityBadge = document.getElementById("entityBadge");
+  const editorSummary = document.getElementById("editorSummary");
+  const formStatus = document.getElementById("formStatus");
+  const editorStatus = document.getElementById("editorStatus");
+  const restoreGeneratedButton = document.getElementById("restoreGeneratedButton");
+  const restoreDefaultsButton = document.getElementById("restoreDefaultsButton");
+  const clearEditorButton = document.getElementById("clearEditorButton");
+  const copySqlButton = document.getElementById("copySqlButton");
+  const clearStorageButton = document.getElementById("clearStorageButton");
+  const globalAuditUserIdInput = document.getElementById("globalAuditUserId");
+
+  function setFormStatus(message, tone) {
+    formStatus.textContent = message;
+    formStatus.className = "status " + tone;
+  }
+
+  function setEditorStatus(message, tone) {
+    editorStatus.textContent = message;
+    editorStatus.className = "status " + tone;
+  }
+
+  function clearStatus() {
+    formStatus.textContent = "";
+    formStatus.className = "status";
+    editorStatus.textContent = "";
+    editorStatus.className = "status";
+  }
+
+  function findFormBucket(fieldName) {
+    if (config.AUDIT_FIELDS.some((field) => field.key === fieldName)) {
+      return "audit";
+    }
+    return state.mode;
+  }
+
+  function render() {
+    const schema = config.FIELD_SCHEMAS[state.mode];
+    stateManager.ensureDetailCollections(state);
+    stateManager.syncAuditUserId(state);
+    globalAuditUserIdInput.value = state.settings.globalAuditUserId || "";
+    formTitle.textContent = schema.title;
+    entityBadge.textContent = "ENTITY_TYPE_ID " + schema.entityTypeId;
+    editorSummary.textContent = schema.summary;
+    detailControls.classList.toggle("hidden", state.mode !== "detail");
+    fieldGrid.classList.toggle("hidden", state.mode === "detail");
+    auditPanel.classList.toggle("hidden", state.mode === "detail");
+    detailStack.classList.toggle("hidden", state.mode !== "detail");
+    removeDetailButton.disabled = state.mode !== "detail" || state.forms.detail.length === 1;
+
+    document.querySelectorAll(".tab").forEach((tab) => {
+      const isActive = tab.dataset.mode === state.mode;
+      tab.classList.toggle("active", isActive);
+      tab.setAttribute("aria-selected", String(isActive));
+    });
+
+    if (state.mode === "rule") {
+      renderer.renderFields(fieldGrid, schema.fields, state.forms.rule);
+      renderer.renderFields(auditGrid, config.AUDIT_FIELDS, state.forms.audit, { bucket: "audit" });
+    } else {
+      renderer.renderDetailEntries(state, detailStack);
+    }
+
+    sqlEditor.value = state.editorSql || lastGeneratedSql || "";
+  }
+
+  function regenerate() {
+    const validation = validators.validateCurrentForm(state);
+    if (!validation.valid) {
+      setFormStatus(validation.message, "error");
+      return;
+    }
+
+    const generatedSql = state.mode === "rule" ? sql.generateRuleSql(state) : sql.generateDetailSql(state);
+    lastGeneratedSql = generatedSql;
+    state.generatedSql = generatedSql;
+    state.editorSql = generatedSql;
+    sqlEditor.value = generatedSql;
+    stateManager.persistState(state);
+    setFormStatus("SQL regenerado correctamente.", "success");
+    setEditorStatus("El editor quedó sincronizado con la última versión generada.", "success");
+  }
+
+  function handleInputChange(event) {
+    const target = event.target;
+    if (!target.name) {
+      return;
+    }
+
+    const formBucket = target.dataset.bucket || findFormBucket(target.name);
+    const index = target.dataset.index === undefined ? null : Number(target.dataset.index);
+
+    if (formBucket === "settings") {
+      state.settings[target.name] = target.value;
+    } else if (index === null) {
+      state.forms[formBucket][target.name] = target.value;
+    } else {
+      state.forms[formBucket][index][target.name] = target.value;
+    }
+
+    if (target.name === "globalAuditUserId") {
+      stateManager.syncAuditUserId(state);
+      render();
+    }
+
+    if (target.name === "auditUserIdRule" || target.name === "auditUserIdDetail" || target.name === "auditUserId") {
+      state.settings.globalAuditUserId = target.value;
+      stateManager.syncAuditUserId(state);
+      render();
+    }
+
+    if (target.name === "pricingRuleId" && state.mode === "rule") {
+      state.forms.audit.objectEntityId = target.value;
+    }
+
+    stateManager.persistState(state);
+  }
+
+  document.querySelectorAll(".tab").forEach((tab) => {
+    tab.addEventListener("click", () => {
+      state.mode = tab.dataset.mode;
+      stateManager.ensureDetailCollections(state);
+      stateManager.syncAuditUserId(state);
+      clearStatus();
+      render();
+      stateManager.persistState(state);
+    });
+  });
+
+  addDetailButton.addEventListener("click", () => {
+    stateManager.ensureDetailCollections(state);
+    state.forms.detail.push(config.createDefaultDetail());
+    state.forms.detailAudits.push(config.createDefaultDetailAudit());
+    clearStatus();
+    render();
+    stateManager.persistState(state);
+  });
+
+  removeDetailButton.addEventListener("click", () => {
+    stateManager.ensureDetailCollections(state);
+    if (state.forms.detail.length === 1) {
+      return;
+    }
+    state.forms.detail.pop();
+    state.forms.detailAudits.pop();
+    clearStatus();
+    render();
+    stateManager.persistState(state);
+  });
+
+  generatorForm.addEventListener("input", handleInputChange);
+  generatorForm.addEventListener("change", handleInputChange);
+  globalAuditUserIdInput.addEventListener("input", handleInputChange);
+  globalAuditUserIdInput.addEventListener("change", handleInputChange);
+  generatorForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    regenerate();
+  });
+
+  sqlEditor.addEventListener("input", () => {
+    state.editorSql = sqlEditor.value;
+    stateManager.persistState(state);
+  });
+
+  restoreGeneratedButton.addEventListener("click", () => {
+    sqlEditor.value = lastGeneratedSql;
+    state.editorSql = lastGeneratedSql;
+    stateManager.persistState(state);
+    setEditorStatus("Editor restaurado al último SQL generado.", "success");
+  });
+
+  restoreDefaultsButton.addEventListener("click", () => {
+    stateManager.resetModeDefaults(state);
+    clearStatus();
+    render();
+    regenerate();
+  });
+
+  clearEditorButton.addEventListener("click", () => {
+    sqlEditor.value = "";
+    state.editorSql = "";
+    stateManager.persistState(state);
+    setEditorStatus("Editor limpio. Puedes pegar o regenerar una query nueva.", "success");
+  });
+
+  clearStorageButton.addEventListener("click", () => {
+    localStorage.removeItem(config.STORAGE_KEY);
+    stateManager.resetAllState(state);
+    lastGeneratedSql = "";
+    clearStatus();
+    render();
+    regenerate();
+  });
+
+  copySqlButton.addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(sqlEditor.value);
+      setEditorStatus("SQL copiado al portapapeles.", "success");
+    } catch (error) {
+      setEditorStatus("No se pudo copiar automáticamente. Usa Ctrl+C sobre el editor.", "error");
+    }
+  });
+
+  render();
+  if (!state.editorSql) {
+    regenerate();
+  } else {
+    sqlEditor.value = state.editorSql;
+  }
+
+  window.PricingRuleApp = {
+    render,
+    regenerate,
+    state
+  };
+}());
