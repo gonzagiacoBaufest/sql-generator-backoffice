@@ -53,6 +53,38 @@
     return state.mode;
   }
 
+  function buildRuleTitle(entryValues, index) {
+    const pricingRuleId = String(entryValues.rule.pricingRuleId || "").trim();
+    return pricingRuleId ? "pricing_rule #" + (index + 1) + " - PRICING_RULE_ID " + pricingRuleId : "pricing_rule #" + (index + 1);
+  }
+
+  function buildBlockTitle(blockValues, index) {
+    const pricingRuleId = String(blockValues.pricingRuleId || "").trim();
+    return pricingRuleId ? "Bloque " + (index + 1) + " - PRICING_RULE_ID " + pricingRuleId : "Bloque " + (index + 1);
+  }
+
+  function updateRuleEntryTitle(ruleIndex) {
+    const title = ruleNav.querySelector("#ruleGrid-" + ruleIndex)?.closest("section")?.querySelector(":scope > .detail-entry-title");
+    if (title) {
+      title.textContent = buildRuleTitle(state.forms.ruleEntries[ruleIndex], ruleIndex);
+    }
+  }
+
+  function updateDetailBlockTitles(blockIndex) {
+    const blockValues = state.forms.detailBlocks[blockIndex];
+    const blockTab = detailStack.querySelector("[data-block-tab-index=\"" + blockIndex + "\"]");
+    if (blockTab) {
+      blockTab.textContent = buildBlockTitle(blockValues, blockIndex);
+    }
+
+    if (blockIndex === state.ui.activeDetailBlockIndex) {
+      const blockTitle = detailStack.querySelector(".detail-block-header .detail-entry-title");
+      if (blockTitle) {
+        blockTitle.textContent = buildBlockTitle(blockValues, blockIndex);
+      }
+    }
+  }
+
   function render() {
     const schema = config.FIELD_SCHEMAS[state.mode];
     stateManager.ensureDetailCollections(state);
@@ -144,11 +176,11 @@
       render();
     }
 
-    if (formBucket === "ruleEntries" && target.name === "pricingRuleId") {
-      render();
+    if (formBucket === "ruleEntries" && target.name === "pricingRuleId" && ruleIndex !== null) {
+      updateRuleEntryTitle(ruleIndex);
     }
-    if (formBucket === "detailBlocks" && target.name === "pricingRuleId") {
-      render();
+    if (formBucket === "detailBlocks" && target.name === "pricingRuleId" && blockIndex !== null) {
+      updateDetailBlockTitles(blockIndex);
     }
 
     stateManager.persistState(state);
