@@ -15,9 +15,13 @@
   const auditGrid = document.getElementById("auditGrid");
   const auditPanel = document.getElementById("auditPanel");
   const detailStack = document.getElementById("detailStack");
+  const detailEntryControls = document.getElementById("detailEntryControls");
   const detailControls = document.getElementById("detailControls");
+  const floatingPrimaryLabel = document.getElementById("floatingPrimaryLabel");
   const addDetailButton = document.getElementById("addDetailButton");
   const removeDetailButton = document.getElementById("removeDetailButton");
+  const addDetailEntryButton = document.getElementById("addDetailEntryButton");
+  const removeDetailEntryButton = document.getElementById("removeDetailEntryButton");
   const sqlEditor = document.getElementById("sqlEditor");
   const formTitle = document.getElementById("formTitle");
   const entityBadge = document.getElementById("entityBadge");
@@ -121,13 +125,18 @@
     entityBadge.textContent = "ENTITY_TYPE_ID " + schema.entityTypeId;
     editorSummary.textContent = schema.summary;
     detailControls.classList.remove("hidden");
+    detailEntryControls.classList.toggle("hidden", state.mode !== "detail");
     fieldGrid.classList.add("hidden");
     ruleNav.classList.toggle("hidden", state.mode !== "rule");
     auditPanel.classList.add("hidden");
     detailStack.classList.toggle("hidden", state.mode !== "detail");
+    floatingPrimaryLabel.textContent = state.mode === "rule" ? "Pricing rule" : "Bloques";
     removeDetailButton.disabled = state.mode === "rule"
       ? state.forms.ruleEntries.length === 1
       : state.forms.detailBlocks.length === 1;
+    addDetailEntryButton.disabled = state.mode !== "detail";
+    removeDetailEntryButton.disabled = state.mode !== "detail"
+      || state.forms.detailBlocks[state.ui.activeDetailBlockIndex].entries.length === 1;
     addDetailButton.setAttribute("aria-label", state.mode === "rule" ? "Agregar pricing_rule" : "Agregar bloque pricing_rule_detail");
     removeDetailButton.setAttribute("aria-label", state.mode === "rule" ? "Eliminar pricing_rule" : "Eliminar bloque pricing_rule_detail");
 
@@ -280,6 +289,44 @@
     stateManager.persistState(state);
   });
 
+  addDetailEntryButton.addEventListener("click", () => {
+    if (state.mode !== "detail") {
+      return;
+    }
+
+    const activeBlock = state.forms.detailBlocks[state.ui.activeDetailBlockIndex];
+    const referenceEntry = activeBlock.entries[0];
+    const nextDetail = config.createDefaultDetail();
+    const nextAudit = config.createDefaultDetailAudit();
+    nextDetail.pricingRuleDetailIdMode = referenceEntry.detail.pricingRuleDetailIdMode;
+    nextAudit.auditLogIdMode = referenceEntry.audit.auditLogIdMode;
+
+    activeBlock.entries.push({
+      detail: nextDetail,
+      audit: nextAudit
+    });
+    stateManager.syncAuditUserId(state);
+    clearStatus();
+    render();
+    stateManager.persistState(state);
+  });
+
+  removeDetailEntryButton.addEventListener("click", () => {
+    if (state.mode !== "detail") {
+      return;
+    }
+
+    const activeBlock = state.forms.detailBlocks[state.ui.activeDetailBlockIndex];
+    if (activeBlock.entries.length === 1) {
+      return;
+    }
+
+    activeBlock.entries.pop();
+    clearStatus();
+    render();
+    stateManager.persistState(state);
+  });
+
   detailStack.addEventListener("click", (event) => {
     const target = event.target.closest("button");
     if (!target) {
@@ -292,36 +339,6 @@
       render();
       stateManager.persistState(state);
       return;
-    }
-
-    if (target.dataset.action === "add-detail-entry") {
-      const activeBlock = state.forms.detailBlocks[state.ui.activeDetailBlockIndex];
-      const referenceEntry = activeBlock.entries[0];
-      const nextDetail = config.createDefaultDetail();
-      const nextAudit = config.createDefaultDetailAudit();
-      nextDetail.pricingRuleDetailIdMode = referenceEntry.detail.pricingRuleDetailIdMode;
-      nextAudit.auditLogIdMode = referenceEntry.audit.auditLogIdMode;
-
-      activeBlock.entries.push({
-        detail: nextDetail,
-        audit: nextAudit
-      });
-      stateManager.syncAuditUserId(state);
-      clearStatus();
-      render();
-      stateManager.persistState(state);
-      return;
-    }
-
-    if (target.dataset.action === "remove-detail-entry") {
-      const activeBlock = state.forms.detailBlocks[state.ui.activeDetailBlockIndex];
-      if (activeBlock.entries.length === 1) {
-        return;
-      }
-      activeBlock.entries.pop();
-      clearStatus();
-      render();
-      stateManager.persistState(state);
     }
   });
 

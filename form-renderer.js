@@ -202,26 +202,7 @@
     blockTitle.className = "detail-entry-title";
     blockTitle.textContent = buildBlockTitle(activeBlock, activeBlockIndex);
 
-    const blockActions = document.createElement("div");
-    blockActions.className = "detail-entry-actions";
-
-    const removeEntryButton = document.createElement("button");
-    removeEntryButton.type = "button";
-    removeEntryButton.className = "secondary detail-stepper";
-    removeEntryButton.textContent = "-";
-    removeEntryButton.dataset.action = "remove-detail-entry";
-    removeEntryButton.disabled = activeBlock.entries.length === 1;
-    removeEntryButton.setAttribute("aria-label", "Eliminar pricing_rule_detail del bloque activo");
-
-    const addEntryButton = document.createElement("button");
-    addEntryButton.type = "button";
-    addEntryButton.className = "primary detail-stepper";
-    addEntryButton.textContent = "+";
-    addEntryButton.dataset.action = "add-detail-entry";
-    addEntryButton.setAttribute("aria-label", "Agregar pricing_rule_detail al bloque activo");
-
-    blockActions.append(removeEntryButton, addEntryButton);
-    blockHeader.append(blockTitle, blockActions);
+    blockHeader.append(blockTitle);
 
     const blockFields = document.createElement("div");
     blockFields.className = "form-grid detail-block-fields-grid";

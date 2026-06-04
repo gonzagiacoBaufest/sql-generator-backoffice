@@ -64,6 +64,11 @@ body {
   min-width: 0;
 }
 
+.panel {
+  position: relative;
+  padding-bottom: 170px;
+}
+
 .helper,
 .pill,
 .field-note,
@@ -362,6 +367,38 @@ textarea.invalid {
   align-items: center;
 }
 
+.floating-actions {
+  position: fixed;
+  right: clamp(16px, 4vw, 48px);
+  bottom: clamp(16px, 4vw, 36px);
+  z-index: 30;
+  display: grid;
+  gap: 12px;
+  justify-items: end;
+  pointer-events: none;
+}
+
+.floating-action-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid rgba(29, 29, 31, 0.12);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 18px 48px rgba(29, 29, 31, 0.12);
+  backdrop-filter: blur(12px);
+  pointer-events: auto;
+}
+
+.floating-action-label {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
 .detail-stepper {
   min-width: 44px;
   padding: 11px 0;
@@ -534,6 +571,24 @@ button:focus-visible,
 
 .hidden {
   display: none;
+}
+
+@media (max-width: 720px) {
+  .panel {
+    padding-bottom: 220px;
+  }
+
+  .floating-actions {
+    left: 16px;
+    right: 16px;
+    bottom: 16px;
+    justify-items: stretch;
+  }
+
+  .floating-action-group {
+    justify-content: space-between;
+    width: 100%;
+  }
 }
 
 @media (max-width: 1320px) {

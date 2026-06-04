@@ -33,10 +33,6 @@
             <h2 id="formTitle">Formulario de pricing_rule</h2>
           </div>
           <div class="section-title-meta">
-            <div class="detail-controls hidden" id="detailControls" aria-label="Controles de bloques pricing_rule_detail">
-              <button class="secondary detail-stepper" type="button" id="removeDetailButton" aria-label="Eliminar bloque pricing_rule_detail">-</button>
-              <button class="primary detail-stepper" type="button" id="addDetailButton" aria-label="Agregar bloque pricing_rule_detail">+</button>
-            </div>
             <span class="subcopy" id="entityBadge">ENTITY_TYPE_ID 8</span>
           </div>
         </div>
@@ -60,6 +56,19 @@
 
           <div class="status" id="formStatus" aria-live="polite"></div>
         </form>
+
+        <div class="floating-actions" id="floatingActions" aria-label="Acciones rapidas del formulario">
+          <div class="floating-action-group" id="detailControls" aria-label="Controles de bloques pricing_rule_detail">
+            <span class="floating-action-label" id="floatingPrimaryLabel">Bloques</span>
+            <button class="secondary detail-stepper" type="button" id="removeDetailButton" aria-label="Eliminar bloque pricing_rule_detail">-</button>
+            <button class="primary detail-stepper" type="button" id="addDetailButton" aria-label="Agregar bloque pricing_rule_detail">+</button>
+          </div>
+          <div class="floating-action-group hidden" id="detailEntryControls" aria-label="Controles de pricing_rule_detail del bloque activo">
+            <span class="floating-action-label">Detalles</span>
+            <button class="secondary detail-stepper" type="button" id="removeDetailEntryButton" aria-label="Eliminar pricing_rule_detail del bloque activo">-</button>
+            <button class="primary detail-stepper" type="button" id="addDetailEntryButton" aria-label="Agregar pricing_rule_detail al bloque activo">+</button>
+          </div>
+        </div>
       </article>
 
       <article class="editor-card">
