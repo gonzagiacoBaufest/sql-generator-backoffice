@@ -1,0 +1,45 @@
+{
+  "validation": {
+    "validateAgainstSchema": true
+  },
+  "output": {
+    "root": {
+      "includeAccion": true,
+      "accionValue": 1
+    },
+    "alta": {
+      "includeFields": [
+        "idRequest",
+        "adquirente",
+        "idTipoPricing",
+        "subtipo",
+        "prioridad",
+        "fechaInicio",
+        "fechaFin",
+        "tasaCredito",
+        "tasaDebito",
+        "tasaPrepago",
+        "tasaCreditoDls",
+        "tasaDebitoDls",
+        "tasaPrepagoDls",
+        "descripcion",
+        "tipoPricing",
+        "aplicacion",
+        "condicion"
+      ],
+      "fixedValues": {
+        "adquirente": "02",
+        "subtipo": "G",
+        "prioridad": 1,
+        "fechaInicio": "2026-05-12",
+        "fechaFin": "2026-12-12",
+        "tipoPricing": "T",
+        "aplicacion": "U"
+      }
+    },
+    "condicion": {
+      "includeIds": [1, 2, 9, 12, 16, 17, 18],
+      "forbiddenIds": [3, 4, 29, 31, 32]
+    }
+  }
+}

@@ -159,7 +159,8 @@
       },
       ui: {
         activeRuleIndex: 0,
-        activeDetailBlockIndex: 0
+        activeDetailBlockIndex: 0,
+        collapsedEntries: {}
       },
       generatedSql: "",
       editorSql: ""

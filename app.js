@@ -94,10 +94,40 @@
   }
 
   function updateRuleEntryTitle(ruleIndex) {
-    const title = ruleNav.querySelector("#ruleGrid-" + ruleIndex)?.closest("section")?.querySelector(":scope > .detail-entry-title");
+    const title = ruleNav.querySelector("#ruleGrid-" + ruleIndex)?.closest("section")?.querySelector(".detail-entry-title");
     if (title) {
       title.textContent = buildRuleTitle(state.forms.ruleEntries[ruleIndex], ruleIndex);
     }
+  }
+
+  function toggleEntryCollapsed(entryKey) {
+    if (state.ui.collapsedEntries[entryKey]) {
+      delete state.ui.collapsedEntries[entryKey];
+    } else {
+      state.ui.collapsedEntries[entryKey] = true;
+    }
+
+    clearStatus();
+    render();
+    stateManager.persistState(state);
+  }
+
+  function handleEntryToggleInteraction(container, event) {
+    const target = event.target.closest("[data-entry-toggle-key]");
+    if (!target || !container.contains(target)) {
+      return false;
+    }
+
+    if (event.type === "keydown" && event.key !== "Enter" && event.key !== " ") {
+      return false;
+    }
+
+    if (event.type === "keydown") {
+      event.preventDefault();
+    }
+
+    toggleEntryCollapsed(target.dataset.entryToggleKey);
+    return true;
   }
 
   function updateDetailBlockTitles(blockIndex) {
@@ -329,17 +359,27 @@
 
   detailStack.addEventListener("click", (event) => {
     const target = event.target.closest("button");
-    if (!target) {
-      return;
-    }
-
-    if (target.dataset.blockTabIndex !== undefined) {
+    if (target && target.dataset.blockTabIndex !== undefined) {
       state.ui.activeDetailBlockIndex = Number(target.dataset.blockTabIndex);
       clearStatus();
       render();
       stateManager.persistState(state);
       return;
     }
+
+    handleEntryToggleInteraction(detailStack, event);
+  });
+
+  detailStack.addEventListener("keydown", (event) => {
+    handleEntryToggleInteraction(detailStack, event);
+  });
+
+  ruleNav.addEventListener("click", (event) => {
+    handleEntryToggleInteraction(ruleNav, event);
+  });
+
+  ruleNav.addEventListener("keydown", (event) => {
+    handleEntryToggleInteraction(ruleNav, event);
   });
 
   generatorForm.addEventListener("input", handleInputChange);

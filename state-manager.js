@@ -93,6 +93,10 @@
       state.ui = { activeRuleIndex: 0, activeDetailBlockIndex: 0 };
     }
 
+    if (!state.ui.collapsedEntries || typeof state.ui.collapsedEntries !== "object") {
+      state.ui.collapsedEntries = {};
+    }
+
     const maxRuleIndex = state.forms.ruleEntries.length - 1;
     const requestedRuleIndex = Number(state.ui.activeRuleIndex || 0);
     state.ui.activeRuleIndex = Math.min(Math.max(requestedRuleIndex, 0), maxRuleIndex);

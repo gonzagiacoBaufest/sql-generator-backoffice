@@ -464,6 +464,44 @@ textarea.invalid {
   background: #dee0e2;
 }
 
+.detail-entry-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  cursor: pointer;
+}
+
+.detail-entry-header::after {
+  content: "▾";
+  font-size: 20px;
+  line-height: 1;
+  color: rgba(29, 29, 31, 0.72);
+}
+
+.detail-entry.collapsed .detail-entry-header::after {
+  content: "▸";
+}
+
+.detail-entry-header:focus-visible {
+  outline: 2px solid rgba(29, 29, 31, 0.35);
+  outline-offset: 6px;
+}
+
+.detail-entry-body {
+  display: grid;
+  gap: 24px;
+}
+
+.detail-entry-body[hidden] {
+  display: none;
+}
+
+.detail-entry.collapsed {
+  gap: 0;
+  padding-bottom: 18px;
+}
+
 .detail-entry:first-child {
   padding-top: 24px;
   border-top: 1px solid rgba(29, 29, 31, 0.08);

@@ -215,12 +215,30 @@
     blockSection.append(blockHeader, blockFields);
 
     activeBlock.entries.forEach((entryValues, index) => {
+      const entryKey = "detail-" + activeBlockIndex + "-" + index;
+      const isCollapsed = Boolean(state.ui.collapsedEntries[entryKey]);
       const entry = document.createElement("section");
-      entry.className = "detail-entry";
+      entry.className = "detail-entry" + (isCollapsed ? " collapsed" : "");
+      entry.dataset.entryKey = entryKey;
+
+      const header = document.createElement("div");
+      header.className = "detail-entry-header";
+      header.dataset.entryToggleKey = entryKey;
+      header.setAttribute("role", "button");
+      header.setAttribute("tabindex", "0");
+      header.setAttribute("aria-expanded", String(!isCollapsed));
+      header.setAttribute("aria-controls", "detailBody-" + activeBlockIndex + "-" + index);
 
       const title = document.createElement("h3");
       title.className = "detail-entry-title";
       title.textContent = "pricing_rule_detail #" + (index + 1);
+
+      header.appendChild(title);
+
+      const entryBody = document.createElement("div");
+      entryBody.className = "detail-entry-body";
+      entryBody.id = "detailBody-" + activeBlockIndex + "-" + index;
+      entryBody.hidden = isCollapsed;
 
       const detailGrid = document.createElement("div");
       detailGrid.className = "form-grid detail-fields-grid";
@@ -250,7 +268,8 @@
       });
 
       auditSection.append(auditTitle, auditFieldsGrid);
-      entry.append(title, detailGrid, auditSection);
+      entryBody.append(detailGrid, auditSection);
+      entry.append(header, entryBody);
       blockSection.appendChild(entry);
     });
 
@@ -260,12 +279,30 @@
   function renderRuleEntries(state, container) {
     container.innerHTML = "";
     state.forms.ruleEntries.forEach((entryValues, index) => {
+      const entryKey = "rule-" + index;
+      const isCollapsed = Boolean(state.ui.collapsedEntries[entryKey]);
       const section = document.createElement("section");
-      section.className = "detail-entry";
+      section.className = "detail-entry" + (isCollapsed ? " collapsed" : "");
+      section.dataset.entryKey = entryKey;
+
+      const header = document.createElement("div");
+      header.className = "detail-entry-header";
+      header.dataset.entryToggleKey = entryKey;
+      header.setAttribute("role", "button");
+      header.setAttribute("tabindex", "0");
+      header.setAttribute("aria-expanded", String(!isCollapsed));
+      header.setAttribute("aria-controls", "ruleBody-" + index);
 
       const title = document.createElement("h3");
       title.className = "detail-entry-title";
       title.textContent = buildRuleTitle(entryValues, index);
+
+      header.appendChild(title);
+
+      const entryBody = document.createElement("div");
+      entryBody.className = "detail-entry-body";
+      entryBody.id = "ruleBody-" + index;
+      entryBody.hidden = isCollapsed;
 
       const ruleFieldsGrid = document.createElement("div");
       ruleFieldsGrid.className = "form-grid detail-fields-grid";
@@ -293,7 +330,8 @@
       });
 
       auditSection.append(auditTitle, auditFieldsGrid);
-      section.append(title, ruleFieldsGrid, auditSection);
+      entryBody.append(ruleFieldsGrid, auditSection);
+      section.append(header, entryBody);
       container.appendChild(section);
     });
   }
