@@ -1,6 +1,25 @@
 (function () {
   const config = window.PricingRuleConfig;
 
+  function buildErrorKey(field, renderOptions) {
+    if (renderOptions.bucket === "ruleEntries") {
+      return "ruleEntries." + renderOptions.ruleIndex + ".rule." + field.key;
+    }
+    if (renderOptions.bucket === "ruleEntryAudits") {
+      return "ruleEntries." + renderOptions.ruleIndex + ".audit." + field.key;
+    }
+    if (renderOptions.bucket === "detailBlocks") {
+      return "detailBlocks." + renderOptions.blockIndex + "." + field.key;
+    }
+    if (renderOptions.bucket === "detailBlockDetails") {
+      return "detailBlocks." + renderOptions.blockIndex + ".entries." + renderOptions.index + ".detail." + field.key;
+    }
+    if (renderOptions.bucket === "detailBlockAudits") {
+      return "detailBlocks." + renderOptions.blockIndex + ".entries." + renderOptions.index + ".audit." + field.key;
+    }
+    return field.key;
+  }
+
   function buildRuleTitle(entryValues, index) {
     const pricingRuleId = String(entryValues.rule.pricingRuleId || "").trim();
     return pricingRuleId ? "pricing_rule #" + (index + 1) + " - PRICING_RULE_ID " + pricingRuleId : "pricing_rule #" + (index + 1);
@@ -124,6 +143,8 @@
         input.setAttribute("aria-required", "true");
       }
 
+      input.dataset.errorKey = buildErrorKey(field, renderOptions);
+
       wrapper.append(label, inputFragment);
 
       if (field.note) {
@@ -132,6 +153,12 @@
         note.textContent = field.note;
         wrapper.appendChild(note);
       }
+
+      const error = document.createElement("div");
+      error.className = "field-error";
+      error.dataset.errorKey = input.dataset.errorKey;
+      error.setAttribute("aria-live", "polite");
+      wrapper.appendChild(error);
 
       container.appendChild(wrapper);
     });

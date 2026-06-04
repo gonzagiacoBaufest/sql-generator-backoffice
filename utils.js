@@ -38,6 +38,19 @@
     return local.toISOString().slice(0, 16);
   }
 
+  function addMonthsDateTimeLocal(monthsAhead) {
+    const now = new Date();
+    const future = new Date(now.getTime());
+    future.setMonth(future.getMonth() + monthsAhead);
+    // If adding months rolls the date into the next month because of month length, adjust
+    if (future.getDate() !== now.getDate()) {
+      future.setDate(0); // go to last day of previous month
+    }
+    const offset = future.getTimezoneOffset();
+    const local = new Date(future.getTime() - offset * 60000);
+    return local.toISOString().slice(0, 16);
+  }
+
   function normalizeDateTime(value) {
     return String(value).trim().replace("T", " ") + (String(value).trim().length === 10 ? " 00:00:00" : ":00");
   }
@@ -50,6 +63,14 @@
     return value.replace(/'/g, "''");
   }
 
+  function byteLength(value) {
+    const normalized = String(value ?? "");
+    if (typeof TextEncoder !== "undefined") {
+      return new TextEncoder().encode(normalized).length;
+    }
+    return normalized.length;
+  }
+
   window.PricingRuleUtils = {
     clone,
     isBlank,
@@ -58,8 +79,10 @@
     nowDateTimeLocal,
     addHoursDateTimeLocal,
     nextDateTimeLocal,
+    addMonthsDateTimeLocal,
     normalizeDateTime,
     isOracleSysdate,
-    escapeSql
+    escapeSql,
+    byteLength
   };
 }());

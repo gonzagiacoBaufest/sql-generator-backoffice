@@ -47,6 +47,31 @@
     editorStatus.className = "status";
   }
 
+  function syncValidationUi(validation) {
+    const validationResult = validation || validators.validateCurrentForm(state);
+    const fieldErrors = validationResult.fieldErrors || {};
+
+    generatorForm.querySelectorAll(".field").forEach((fieldWrapper) => {
+      const input = fieldWrapper.querySelector("[data-error-key]");
+      if (!input || !input.dataset.errorKey) {
+        return;
+      }
+
+      const message = fieldErrors[input.dataset.errorKey] || "";
+      const errorNode = fieldWrapper.querySelector(".field-error");
+
+      fieldWrapper.classList.toggle("invalid", Boolean(message));
+      input.classList.toggle("invalid", Boolean(message));
+      input.setAttribute("aria-invalid", message ? "true" : "false");
+
+      if (errorNode) {
+        errorNode.textContent = message;
+      }
+    });
+
+    return validationResult;
+  }
+
   function findFormBucket(fieldName) {
     if (config.AUDIT_FIELDS.some((field) => field.key === fieldName)) {
       return "audit";
@@ -119,10 +144,12 @@
     }
 
     sqlEditor.value = state.editorSql || lastGeneratedSql || "";
+    syncValidationUi();
   }
 
   function regenerate() {
     const validation = validators.validateCurrentForm(state);
+    syncValidationUi(validation);
     if (!validation.valid) {
       setFormStatus(validation.message, "error");
       return;
@@ -191,6 +218,7 @@
     }
 
     stateManager.persistState(state);
+    syncValidationUi();
   }
 
   document.querySelectorAll(".tab").forEach((tab) => {

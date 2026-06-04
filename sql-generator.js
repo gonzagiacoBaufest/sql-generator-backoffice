@@ -30,6 +30,10 @@
   }
 
   function nextIdSelectInto(variableName, tableName, columnName) {
+    if (config.USE_SEQUENCES) {
+      const seqName = (config.SEQUENCE_MAP && config.SEQUENCE_MAP[tableName]) ? config.SEQUENCE_MAP[tableName] : tableName + config.DEFAULT_SEQUENCE_SUFFIX;
+      return "SELECT " + seqName + ".NEXTVAL INTO " + variableName + " FROM DUAL;";
+    }
     return "SELECT NVL(MAX(" + columnName + "), 0) + 1 INTO " + variableName + " FROM " + tableName + ";";
   }
 
