@@ -29,9 +29,26 @@
     return utils.isBlank(value) ? "NULL" : sqlTimestamp(value);
   }
 
+  function resolveSequenceName(tableName) {
+    if (!config.SEQUENCE_MAP) {
+      return tableName + config.DEFAULT_SEQUENCE_SUFFIX;
+    }
+
+    if (config.SEQUENCE_MAP[tableName]) {
+      return config.SEQUENCE_MAP[tableName];
+    }
+
+    const qualifiedEntry = Object.entries(config.SEQUENCE_MAP).find(([mappedTableName]) => {
+      const normalizedName = String(mappedTableName).split('.').pop();
+      return normalizedName === tableName;
+    });
+
+    return qualifiedEntry ? qualifiedEntry[1] : tableName + config.DEFAULT_SEQUENCE_SUFFIX;
+  }
+
   function nextIdSelectInto(variableName, tableName, columnName) {
     if (config.USE_SEQUENCES) {
-      const seqName = (config.SEQUENCE_MAP && config.SEQUENCE_MAP[tableName]) ? config.SEQUENCE_MAP[tableName] : tableName + config.DEFAULT_SEQUENCE_SUFFIX;
+      const seqName = resolveSequenceName(tableName);
       return "SELECT " + seqName + ".NEXTVAL INTO " + variableName + " FROM DUAL;";
     }
     return "SELECT NVL(MAX(" + columnName + "), 0) + 1 INTO " + variableName + " FROM " + tableName + ";";

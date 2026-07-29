@@ -391,6 +391,19 @@ textarea.invalid {
   pointer-events: auto;
 }
 
+.floating-action-meta {
+  display: grid;
+  gap: 2px;
+  justify-items: start;
+}
+
+.floating-action-index {
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--ink);
+}
+
 .floating-action-label {
   font-size: 12px;
   font-weight: 600;

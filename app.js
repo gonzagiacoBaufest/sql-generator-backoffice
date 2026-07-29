@@ -17,6 +17,7 @@
   const detailStack = document.getElementById("detailStack");
   const detailEntryControls = document.getElementById("detailEntryControls");
   const detailControls = document.getElementById("detailControls");
+  const floatingDetailBlockIndex = document.getElementById("floatingDetailBlockIndex");
   const floatingPrimaryLabel = document.getElementById("floatingPrimaryLabel");
   const addDetailButton = document.getElementById("addDetailButton");
   const removeDetailButton = document.getElementById("removeDetailButton");
@@ -145,6 +146,35 @@
     }
   }
 
+  function scrollWindowToTop() {
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  }
+
+  function syncDetailObjectEntitySelect(blockIndex, index) {
+    const detailValues = state.forms.detailBlocks[blockIndex].entries[index].detail;
+    const objectEntitySelect = document.getElementById("detail-" + blockIndex + "-" + index + "-objectEntityId");
+    if (!objectEntitySelect) {
+      return;
+    }
+
+    const options = config.getDetailObjectEntityOptions(detailValues.entityTypeIdDetail);
+    objectEntitySelect.innerHTML = "";
+
+    const blankOption = document.createElement("option");
+    blankOption.value = "";
+    blankOption.textContent = "Seleccionar";
+    objectEntitySelect.appendChild(blankOption);
+
+    options.forEach((optionValue) => {
+      const option = document.createElement("option");
+      option.value = optionValue.value;
+      option.textContent = optionValue.label;
+      objectEntitySelect.appendChild(option);
+    });
+
+    objectEntitySelect.value = detailValues.objectEntityId || "";
+  }
+
   function render() {
     const schema = config.FIELD_SCHEMAS[state.mode];
     stateManager.ensureDetailCollections(state);
@@ -160,6 +190,10 @@
     ruleNav.classList.toggle("hidden", state.mode !== "rule");
     auditPanel.classList.add("hidden");
     detailStack.classList.toggle("hidden", state.mode !== "detail");
+    floatingDetailBlockIndex.textContent = state.mode === "detail"
+      ? "Bloque actual " + (state.ui.activeDetailBlockIndex + 1)
+      : "";
+    floatingDetailBlockIndex.classList.toggle("hidden", state.mode !== "detail");
     floatingPrimaryLabel.textContent = state.mode === "rule" ? "Pricing rule" : "Bloques";
     removeDetailButton.disabled = state.mode === "rule"
       ? state.forms.ruleEntries.length === 1
@@ -210,6 +244,12 @@
       return;
     }
 
+    // Native selects can emit input while opening; handling them on change avoids
+    // mutating the active control and collapsing the dropdown on first interaction.
+    if (event.type === "input" && target.tagName === "SELECT") {
+      return;
+    }
+
     const formBucket = target.dataset.bucket || findFormBucket(target.name);
     const ruleIndex = target.dataset.ruleIndex === undefined ? null : Number(target.dataset.ruleIndex);
     const blockIndex = target.dataset.blockIndex === undefined ? null : Number(target.dataset.blockIndex);
@@ -247,6 +287,14 @@
       state.settings.globalAuditUserId = target.value;
       stateManager.syncAuditUserId(state);
       render();
+    }
+
+    if (formBucket === "detailBlockDetails" && blockIndex !== null && index !== null && target.name === "entityTypeIdDetail") {
+      const detailValues = state.forms.detailBlocks[blockIndex].entries[index].detail;
+      if (!config.isValidDetailObjectEntityId(detailValues.entityTypeIdDetail, detailValues.objectEntityId)) {
+        detailValues.objectEntityId = "";
+      }
+      syncDetailObjectEntitySelect(blockIndex, index);
     }
 
     if (formBucket === "ruleEntries" && target.name === "pricingRuleId" && ruleIndex !== null) {
@@ -292,6 +340,7 @@
     stateManager.syncAuditUserId(state);
     clearStatus();
     render();
+    scrollWindowToTop();
     stateManager.persistState(state);
   });
 

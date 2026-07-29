@@ -23,8 +23,14 @@
     const detail = entry && entry.detail ? entry.detail : entry || {};
     const audit = entry && entry.audit ? entry.audit : {};
 
+    const normalizedDetail = { ...config.createDefaultDetail(), ...detail };
+    normalizedDetail.entityTypeIdDetail = config.normalizeDetailEntityTypeId(normalizedDetail.entityTypeIdDetail);
+    if (!config.isValidDetailObjectEntityId(normalizedDetail.entityTypeIdDetail, normalizedDetail.objectEntityId)) {
+      normalizedDetail.objectEntityId = "";
+    }
+
     return {
-      detail: { ...config.createDefaultDetail(), ...detail },
+      detail: normalizedDetail,
       audit: { ...config.createDefaultDetailAudit(), ...audit }
     };
   }

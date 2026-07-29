@@ -5,15 +5,81 @@
   const USE_SEQUENCES = true;
   const DEFAULT_SEQUENCE_SUFFIX = "_SEQ";
   const SEQUENCE_MAP = {
-    'T_ABKO_AUDIT_LOG': 'Q_ABKO_AUDIT_LOG',
-    'T_ABKO_PRICING_RULE': 'Q_ABKO_PRICING_RULE',
-    'T_ABKO_PRICING_RULE_DETAIL': 'Q_ABKO_PRICING_RULE_DETAIL'
+    'ABKO.T_ABKO_AUDIT_LOG': 'ABKO.Q_ABKO_AUDIT_LOG',
+    'ABKO.T_ABKO_PRICING_RULE': 'ABKO.Q_ABKO_PRICING_RULE',
+    'ABKO.T_ABKO_PRICING_RULE_DETAIL': 'ABKO.Q_ABKO_PRICING_RULE_DETAIL'
   };
+
+  const DETAIL_ENTITY_TYPE_OPTIONS = [
+    { value: "1", label: "1    Activity" },
+    { value: "3", label: "3    Segment" },
+    { value: "4", label: "4    Settlement" },
+    { value: "6", label: "6    Payment method" }
+  ];
+
+  const DETAIL_OBJECT_ENTITY_OPTIONS = {
+    "1": [
+      { value: "97", label: "Confit. y Panader. = 97" },
+      { value: "96", label: "Carn/Gran/Pesc = 96" }
+    ],
+    "3": [
+      { value: "1", label: "chico" },
+      { value: "2", label: "mediano" },
+      { value: "3", label: "grande" }
+    ],
+    "4": [
+      { value: "2", label: "1dia" },
+      { value: "8", label: "2dias" },
+      { value: "3", label: "5dias" },
+      { value: "4", label: "8dias" },
+      { value: "5", label: "10dias" },
+      { value: "6", label: "18dias" },
+      { value: "7", label: "30dias" }
+    ],
+    "6": [
+      { value: "1", label: "credito" },
+      { value: "2", label: "debito" },
+      { value: "3", label: "prepaga" },
+      { value: "4", label: "nacional" },
+      { value: "5", label: "internacional" },
+      { value: "6", label: "un pago" },
+      { value: "7", label: "cuotas" }
+    ]
+  };
+
+  function normalizeDetailEntityTypeId(entityTypeId) {
+    const normalized = String(entityTypeId ?? "").trim();
+    if (normalized === "-1") {
+      return "1";
+    }
+    if (normalized === "-3") {
+      return "3";
+    }
+    if (normalized === "-4") {
+      return "4";
+    }
+    if (normalized === "-6") {
+      return "6";
+    }
+    return normalized;
+  }
+
+  function getDetailObjectEntityOptions(entityTypeId) {
+    return DETAIL_OBJECT_ENTITY_OPTIONS[normalizeDetailEntityTypeId(entityTypeId)] || [];
+  }
+
+  function isValidDetailObjectEntityId(entityTypeId, objectEntityId) {
+    if (utils.isBlank(objectEntityId)) {
+      return true;
+    }
+
+    return getDetailObjectEntityOptions(entityTypeId).some((option) => option.value === String(objectEntityId));
+  }
 
   function createDefaultRuleValues() {
     return {
       pricingRuleId: "",
-      pricingRuleIdMode: "manual",
+      pricingRuleIdMode: "auto",
       pricingRuleName: "",
       progressiveType: "UNIQUE",
       feeType: "PE",
@@ -36,7 +102,7 @@
   function createDefaultRuleAudit() {
     return {
       auditLogId: "",
-      auditLogIdMode: "manual",
+      auditLogIdMode: "auto",
       auditDate: "SYSDATE",
       auditUserId: DEFAULT_AUDIT_USER_ID,
       operationType: "ADD",
@@ -54,7 +120,7 @@
   function createDefaultDetail() {
     return {
       pricingRuleDetailId: "",
-      pricingRuleDetailIdMode: "manual",
+      pricingRuleDetailIdMode: "auto",
       entityTypeIdDetail: "1",
       objectEntityId: "",
       activeTypeDetail: "1",
@@ -66,7 +132,7 @@
   function createDefaultDetailAudit() {
     return {
       auditLogId: "",
-      auditLogIdMode: "manual",
+      auditLogIdMode: "auto",
       auditDate: "SYSDATE",
       auditUserId: DEFAULT_AUDIT_USER_ID,
       operationType: "ADD",
@@ -118,15 +184,8 @@
       summary: "Se generará audit_log + pricing_rule_detail.",
       fields: [
         { key: "pricingRuleDetailId", label: "PRICING_RULE_DETAIL_ID", required: true, type: "number", note: "Elige si lo cargas manualmente o si se calcula como MAX + 1.", width: 220, idModeKey: "pricingRuleDetailIdMode", maxDigits: 9, maxScale: 0 },
-        { key: "entityTypeIdDetail", label: "ENTITY_TYPE_ID", required: true, type: "select", width: 168, maxDigits: 4, maxScale: 0, options: [
-          { value: "1", label: "1    Activity" },
-          { value: "2", label: "2    Category" },
-          { value: "3", label: "3    Segment" },
-          { value: "4", label: "4    Settlement" },
-          { value: "5", label: "5    Installment" },
-          { value: "6", label: "6    Payment method" }
-        ] },
-        { key: "objectEntityId", label: "OBJECT_ENTITY_ID", required: false, type: "number", width: 120, maxDigits: 9, maxScale: 0 },
+        { key: "entityTypeIdDetail", label: "ENTITY_TYPE_ID", required: true, type: "select", width: 168, maxDigits: 4, maxScale: 0, options: DETAIL_ENTITY_TYPE_OPTIONS },
+        { key: "objectEntityId", label: "OBJECT_ENTITY_ID", required: false, type: "select", width: 220, maxDigits: 9, maxScale: 0, options(values) { return getDetailObjectEntityOptions(values.entityTypeIdDetail); } },
         { key: "activeTypeDetail", label: "ACTIVE_TYPE", required: false, type: "text", width: 88, maxBytes: 1 },
         { key: "auditDateDetail", label: "AUDIT_DATE", required: true, type: "text", width: 248 },
         { key: "auditUserIdDetail", label: "AUDIT_USER_ID", required: true, type: "text", width: 208, maxBytes: 10 }
@@ -174,9 +233,14 @@
     USE_SEQUENCES,
     DEFAULT_SEQUENCE_SUFFIX,
     SEQUENCE_MAP,
+    DETAIL_ENTITY_TYPE_OPTIONS,
+    DETAIL_OBJECT_ENTITY_OPTIONS,
     FIELD_SCHEMAS,
     DETAIL_BLOCK_FIELDS,
     AUDIT_FIELDS,
+    normalizeDetailEntityTypeId,
+    getDetailObjectEntityOptions,
+    isValidDetailObjectEntityId,
     createDefaultRuleValues,
     createDefaultRuleAudit,
     createDefaultRuleEntry,

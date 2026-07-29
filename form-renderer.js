@@ -64,6 +64,14 @@
     return { group, input: valueInput, modeSelect };
   }
 
+  function resolveFieldOptions(field, values) {
+    if (typeof field.options === "function") {
+      return field.options(values || {});
+    }
+
+    return field.options || [];
+  }
+
   function renderFields(container, fields, values, options) {
     const renderOptions = options || {};
     container.innerHTML = "";
@@ -108,7 +116,15 @@
       }
 
       if (input.tagName === "SELECT") {
-        field.options.forEach((optionValue) => {
+        const optionsList = resolveFieldOptions(field, values);
+        if (!field.required) {
+          const blankOption = document.createElement("option");
+          blankOption.value = "";
+          blankOption.textContent = "Seleccionar";
+          input.appendChild(blankOption);
+        }
+
+        optionsList.forEach((optionValue) => {
           const option = document.createElement("option");
           if (typeof optionValue === "object") {
             option.value = optionValue.value;
